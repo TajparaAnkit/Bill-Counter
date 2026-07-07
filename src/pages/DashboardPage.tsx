@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { getBills, getProducts, getBusinessProfile } from '../services/db';
 import { Bill, Product, UserProfile } from '../types';
-import { Loader2, Eye, FileText, ShoppingBag, Plus, PackageOpen, TrendingUp, DollarSign } from 'lucide-react';
+import { FaIcon } from '../components/shared/FaIcon';
 import { Link } from 'react-router-dom';
 
 export const DashboardPage: React.FC = () => {
@@ -111,7 +111,7 @@ export const DashboardPage: React.FC = () => {
     return (
       <Layout>
         <div className="flex flex-col items-center justify-center py-40 space-y-4">
-          <Loader2 className="animate-spin text-emerald-500" size={40} />
+          <FaIcon icon="fa-solid fa-spinner" className="animate-spin text-emerald-500" size={40} />
           <p className="text-slate-500 font-semibold">Loading dashboard overview...</p>
         </div>
       </Layout>
@@ -124,7 +124,7 @@ export const DashboardPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="metric-card slide-in-up relative" style={{ animationDelay: '0s' }}>
             <div className="absolute top-3 right-3 metric-icon">
-              <PackageOpen size={16} className="text-emerald-600" />
+              <FaIcon icon="fa-solid fa-box" size={16} className="text-emerald-600" />
             </div>
             <div className="label">TOTAL PRODUCTS</div>
             <div className="value">{totalProducts}</div>
@@ -133,7 +133,7 @@ export const DashboardPage: React.FC = () => {
 
           <div className="metric-card slide-in-up relative" style={{ animationDelay: '0.08s' }}>
             <div className="absolute top-3 right-3 metric-icon">
-              <TrendingUp size={16} className="text-sky-500" />
+              <FaIcon icon="fa-solid fa-arrow-trend-up" size={16} className="text-sky-500" />
             </div>
             <div className="label">TODAY'S SALES</div>
             <div className="value">₹{todaysSales.toFixed(0)}</div>
@@ -145,7 +145,7 @@ export const DashboardPage: React.FC = () => {
 
           <div className="metric-card slide-in-up relative" style={{ animationDelay: '0.16s' }}>
             <div className="absolute top-3 right-3 metric-icon">
-              <FileText size={16} className="text-violet-500" />
+              <FaIcon icon="fa-solid fa-file-invoice" size={16} className="text-violet-500" />
             </div>
             <div className="label">TOTAL BILLS</div>
             <div className="value">{totalBills}</div>
@@ -154,7 +154,7 @@ export const DashboardPage: React.FC = () => {
 
           <div className="metric-card slide-in-up relative" style={{ animationDelay: '0.24s' }}>
             <div className="absolute top-3 right-3 metric-icon">
-              <DollarSign size={16} className="text-amber-500" />
+              <FaIcon icon="fa-solid fa-indian-rupee-sign" size={16} className="text-amber-500" />
             </div>
             <div className="label">AVG ORDER VALUE</div>
             <div className="value">₹{averageOrderValue.toFixed(0)}</div>
@@ -170,7 +170,7 @@ export const DashboardPage: React.FC = () => {
                 <Link to="/bills" state={{ create: true }} className="block">
                   <div className="action-btn action-new hover:brightness-95">
                     <div className="action-icon">
-                      <Plus size={18} />
+                      <FaIcon icon="fa-solid fa-plus" size={18} />
                     </div>
                     <div>
                       <div className="font-bold text-sm">NEW BILL</div>
@@ -182,7 +182,7 @@ export const DashboardPage: React.FC = () => {
                 <Link to="/products" className="block">
                   <div className="action-btn action-add hover:brightness-95">
                     <div className="action-icon">
-                      <ShoppingBag size={18} />
+                      <FaIcon icon="fa-solid fa-bag-shopping" size={18} />
                     </div>
                     <div>
                       <div className="font-bold text-sm">ADD PRODUCT</div>
@@ -194,7 +194,7 @@ export const DashboardPage: React.FC = () => {
                 <Link to="/dashboard" className="block">
                   <div className="action-btn action-dashboard hover:brightness-95">
                     <div className="action-icon">
-                      <PackageOpen size={18} />
+                      <FaIcon icon="fa-solid fa-box" size={18} />
                     </div>
                     <div>
                       <div className="font-bold text-sm">DASHBOARD</div>
@@ -240,7 +240,7 @@ export const DashboardPage: React.FC = () => {
                     >
                       <div className="flex items-center gap-4">
                         <div className="grid h-12 w-12 place-items-center rounded-3xl bg-emerald-50 text-emerald-700">
-                          <FileText size={18} />
+                          <FaIcon icon="fa-solid fa-file-invoice" size={18} />
                         </div>
                         <div>
                           <p className="font-semibold text-slate-950">{bill.billNo}</p>
@@ -257,7 +257,7 @@ export const DashboardPage: React.FC = () => {
                           className="rounded-2xl border border-slate-200 bg-white p-2 text-slate-500 transition hover:text-emerald-700"
                           title="View Invoice"
                         >
-                          <Eye size={16} />
+                          <FaIcon icon="fa-solid fa-eye" size={16} />
                         </button>
                       </div>
                     </div>
@@ -265,7 +265,7 @@ export const DashboardPage: React.FC = () => {
                 ) : (
                   <div className="recent-empty">
                     <div className="text-5xl text-slate-300">
-                      <FileText />
+                      <FaIcon icon="fa-solid fa-file-invoice" />
                     </div>
                     <p className="text-base font-semibold text-slate-500">No recent transactions</p>
                     <p className="text-sm text-slate-400">Start adding bills to see your live feed here.</p>

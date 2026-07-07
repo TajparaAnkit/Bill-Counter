@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Save, Loader2 } from 'lucide-react';
+import { FaIcon } from '../shared/FaIcon';
 import { Product, BillItem } from '../../types';
 import { getNextBillNumber } from '../../services/db';
 import { useToast } from '../../hooks/useToast';
@@ -208,7 +208,7 @@ export const BillForm: React.FC<BillFormProps> = ({
                     onClick={() => handleRemoveItem(index)}
                     className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                   >
-                    <Trash2 size={16} />
+                    <FaIcon icon="fa-solid fa-trash" size={16} />
                   </button>
                 </td>
               </tr>
@@ -223,7 +223,7 @@ export const BillForm: React.FC<BillFormProps> = ({
         onClick={handleAddItem}
         className="flex items-center space-x-2 text-green-600 hover:text-green-700 font-semibold text-sm transition-colors"
       >
-        <Plus size={16} />
+        <FaIcon icon="fa-solid fa-plus" size={16} />
         <span>Add Line Item</span>
       </button>
 
@@ -275,12 +275,12 @@ export const BillForm: React.FC<BillFormProps> = ({
         >
           {isSubmitting ? (
             <>
-              <Loader2 size={18} className="animate-spin" />
+              <FaIcon icon="fa-solid fa-spinner" size={18} className="animate-spin" />
               <span>Saving...</span>
             </>
           ) : (
             <>
-              <Save size={18} />
+              <FaIcon icon="fa-solid fa-floppy-disk" size={18} />
               <span>Save Bill</span>
             </>
           )}

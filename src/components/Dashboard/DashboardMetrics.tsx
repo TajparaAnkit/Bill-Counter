@@ -1,5 +1,5 @@
 import React from 'react';
-import { PackageOpen, FileText, TrendingUp } from 'lucide-react';
+import { FaIcon } from '../shared/FaIcon';
 import { MetricsCard } from './MetricsCard';
 
 interface DashboardMetricsProps {
@@ -19,7 +19,7 @@ export const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
     {
       label: 'ACTIVE PRODUCTS',
       value: totalProducts,
-      icon: <PackageOpen size={16} />,
+      icon: <FaIcon icon="fa-solid fa-box" size={16} />,
       subtext: 'Unique items in inventory',
     },
     {
@@ -32,13 +32,13 @@ export const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
     {
       label: 'TOTAL INVOICES',
       value: totalBills,
-      icon: <FileText size={16} />,
+      icon: <FaIcon icon="fa-solid fa-file-invoice" size={16} />,
       subtext: "This month's invoices",
     },
     {
       label: 'AVG ORDER VALUE',
       value: `₹${Math.round(averageOrderValue).toLocaleString('en-IN')}`,
-      icon: <TrendingUp size={16} />,
+      icon: <FaIcon icon="fa-solid fa-arrow-trend-up" size={16} />,
       subtext: 'Average invoice amount',
     },
   ];

@@ -3,7 +3,7 @@ import { Layout } from '../components/shared/Layout';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { getBusinessProfile, updateBusinessProfile } from '../services/db';
-import { Save, Loader2, Settings } from 'lucide-react';
+import { FaIcon } from '../components/shared/FaIcon';
 
 export const SettingsPage: React.FC = () => {
   const { user } = useAuth();
@@ -68,7 +68,7 @@ export const SettingsPage: React.FC = () => {
         <div className="border-b border-slate-100 pb-5">
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-800 flex items-center space-x-2.5 font-display">
             <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
-              <Settings size={24} />
+              <FaIcon icon="fa-solid fa-gear" size={24} />
             </div>
             <span>Settings</span>
           </h1>
@@ -79,7 +79,7 @@ export const SettingsPage: React.FC = () => {
 
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <Loader2 className="animate-spin text-emerald-500" size={36} />
+            <FaIcon icon="fa-solid fa-spinner" className="animate-spin text-emerald-500" size={36} />
             <p className="text-slate-500 text-sm font-semibold">Loading business profile...</p>
           </div>
         ) : (
@@ -159,12 +159,12 @@ export const SettingsPage: React.FC = () => {
               >
                 {isSaving ? (
                   <>
-                    <Loader2 size={18} className="animate-spin" />
+                    <FaIcon icon="fa-solid fa-spinner" size={18} className="animate-spin" />
                     <span>Saving...</span>
                   </>
                 ) : (
                   <>
-                    <Save size={18} />
+                    <FaIcon icon="fa-solid fa-floppy-disk" size={18} />
                     <span>Save Changes</span>
                   </>
                 )}

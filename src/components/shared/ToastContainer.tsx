@@ -1,4 +1,4 @@
-import { X, CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-react';
+import { FaIcon } from './FaIcon';
 import { useToastStore, ToastType } from '../../store/toast';
 
 const getToastStyles = (type: ToastType) => {
@@ -6,22 +6,22 @@ const getToastStyles = (type: ToastType) => {
     success: {
       bg: 'bg-green-50',
       border: 'border-green-200',
-      icon: <CheckCircle className="w-5 h-5 text-green-600" />,
+      icon: <FaIcon icon="fa-solid fa-circle-check" className="w-5 h-5 text-green-600" />,
     },
     error: {
       bg: 'bg-red-50',
       border: 'border-red-200',
-      icon: <AlertCircle className="w-5 h-5 text-red-600" />,
+      icon: <FaIcon icon="fa-solid fa-circle-exclamation" className="w-5 h-5 text-red-600" />,
     },
     warning: {
       bg: 'bg-yellow-50',
       border: 'border-yellow-200',
-      icon: <AlertTriangle className="w-5 h-5 text-yellow-600" />,
+      icon: <FaIcon icon="fa-solid fa-triangle-exclamation" className="w-5 h-5 text-yellow-600" />,
     },
     info: {
       bg: 'bg-blue-50',
       border: 'border-blue-200',
-      icon: <Info className="w-5 h-5 text-blue-600" />,
+      icon: <FaIcon icon="fa-solid fa-circle-info" className="w-5 h-5 text-blue-600" />,
     },
   };
   return styles[type];
@@ -58,7 +58,7 @@ export const ToastContainer: React.FC = () => {
               onClick={() => removeToast(toast.id)}
               className="ml-auto p-1 hover:bg-black/10 rounded transition-colors"
             >
-              <X className="w-4 h-4" />
+              <FaIcon icon="fa-solid fa-xmark" className="w-4 h-4" />
             </button>
           </div>
         );

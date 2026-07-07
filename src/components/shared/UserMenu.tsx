@@ -3,7 +3,7 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../../services/firebase';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../hooks/useToast';
-import { LogOut, User } from 'lucide-react';
+import { FaIcon } from './FaIcon';
 
 export const UserMenu: React.FC = () => {
   const { user } = useAuth();
@@ -23,14 +23,14 @@ export const UserMenu: React.FC = () => {
   return (
     <div className="flex items-center space-x-4">
       <div className="flex items-center space-x-2 text-sm">
-        <User size={18} />
+        <FaIcon icon="fa-solid fa-user" size={18} />
         <span className="text-gray-700 font-medium">{user?.email}</span>
       </div>
       <button
         onClick={handleLogout}
         className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:text-red-600 transition-colors"
       >
-        <LogOut size={18} />
+        <FaIcon icon="fa-solid fa-right-from-bracket" size={18} />
         <span>Logout</span>
       </button>
     </div>

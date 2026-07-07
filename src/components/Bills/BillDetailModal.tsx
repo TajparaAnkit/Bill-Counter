@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, FileDown, Loader2 } from 'lucide-react';
+import { FaIcon } from '../shared/FaIcon';
 import { Bill, UserProfile } from '../../types';
 import { generatePDF } from '../../utils/pdf';
 import { useToast } from '../../hooks/useToast';
@@ -60,12 +60,12 @@ export const BillDetailModal: React.FC<BillDetailModalProps> = ({
             >
               {isDownloading ? (
                 <>
-                  <Loader2 size={16} className="animate-spin" />
+                  <FaIcon icon="fa-solid fa-spinner" size={16} className="animate-spin" />
                   <span>Generating PDF...</span>
                 </>
               ) : (
                 <>
-                  <FileDown size={16} />
+                  <FaIcon icon="fa-solid fa-file-arrow-down" size={16} />
                   <span>Download PDF</span>
                 </>
               )}
@@ -74,7 +74,7 @@ export const BillDetailModal: React.FC<BillDetailModalProps> = ({
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1.5 rounded-full transition-colors"
             >
-              <X size={20} />
+              <FaIcon icon="fa-solid fa-xmark" size={20} />
             </button>
           </div>
         </div>

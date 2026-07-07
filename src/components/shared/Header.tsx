@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { Menu, X, LayoutDashboard, Package, FileText } from 'lucide-react';
 import { UserMenu } from './UserMenu';
+import { FaIcon } from './FaIcon';
 
 export const Header: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -10,9 +10,9 @@ export const Header: React.FC = () => {
   const location = useLocation();
 
   const navItems = [
-    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'Product Manager', path: '/products', icon: Package },
-    { label: 'New Invoice', path: '/bills', icon: FileText },
+    { label: 'Dashboard', path: '/dashboard', icon: 'fa-solid fa-gauge-high' },
+    { label: 'Product Manager', path: '/products', icon: 'fa-solid fa-box' },
+    { label: 'New Invoice', path: '/bills', icon: 'fa-solid fa-file-invoice' },
   ];
 
   useEffect(() => {
@@ -65,14 +65,13 @@ export const Header: React.FC = () => {
               className="md:hidden p-2 hover:bg-slate-50 rounded-lg transition-colors text-slate-500"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              {mobileMenuOpen ? <FaIcon icon="fa-solid fa-xmark" size={20} /> : <FaIcon icon="fa-solid fa-bars" size={20} />}
             </button>
           </div>
         </div>
 
         <nav className="hidden md:flex items-center gap-2 mt-2">
           {navItems.map((item) => {
-            const Icon = item.icon;
             const isActive = location.pathname === item.path ||
               (item.path === '/bills' && location.pathname.startsWith('/bills'));
 
@@ -85,7 +84,7 @@ export const Header: React.FC = () => {
                   : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
                 }`}
               >
-                <Icon size={14} />
+                <FaIcon icon={item.icon} size={14} />
                 <span>{item.label}</span>
               </Link>
             );
@@ -106,7 +105,6 @@ export const Header: React.FC = () => {
             </div>
             <div className="space-y-3 px-2">
               {navItems.map((item) => {
-                const Icon = item.icon;
                 const isActive = location.pathname === item.path ||
                   (item.path === '/bills' && location.pathname.startsWith('/bills'));
 
@@ -119,7 +117,7 @@ export const Header: React.FC = () => {
                       : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
                     }`}
                   >
-                    <Icon size={16} />
+                    <FaIcon icon={item.icon} size={16} />
                     <span>{item.label}</span>
                   </Link>
                 );

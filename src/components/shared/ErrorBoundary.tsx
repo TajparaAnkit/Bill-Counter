@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle } from 'lucide-react';
+import { FaIcon } from './FaIcon';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -30,7 +30,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
           <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
             <div className="flex justify-center mb-4">
-              <AlertCircle className="w-12 h-12 text-red-600" />
+              <FaIcon icon="fa-solid fa-circle-exclamation" className="w-12 h-12 text-red-600" />
             </div>
             <h1 className="text-2xl font-bold text-center text-gray-900 mb-2">
               Oops! Something went wrong

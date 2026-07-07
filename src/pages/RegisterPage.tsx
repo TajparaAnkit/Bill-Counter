@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { RegisterForm } from '../components/Auth/RegisterForm';
-import { Sparkles, Store, ShieldCheck, Heart } from 'lucide-react';
+import { FaIcon } from '../components/shared/FaIcon';
 
 export const RegisterPage: React.FC = () => {
   return (
@@ -26,7 +26,7 @@ export const RegisterPage: React.FC = () => {
         <div className="relative z-10 my-auto max-w-md space-y-8">
           <div className="space-y-4">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold">
-              <Sparkles size={12} />
+              <FaIcon icon="fa-solid fa-sparkles" size={12} />
               <span>Get Started Free</span>
             </div>
             <h1 className="text-4xl font-extrabold tracking-tight text-white leading-tight font-display">
@@ -40,7 +40,7 @@ export const RegisterPage: React.FC = () => {
           <div className="space-y-4 pt-4 border-t border-slate-800/80">
             <div className="flex gap-3">
               <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                <Store size={16} />
+                <FaIcon icon="fa-solid fa-store" size={16} />
               </div>
               <div>
                 <h4 className="text-sm font-semibold text-white">Brand Profile</h4>
@@ -50,7 +50,7 @@ export const RegisterPage: React.FC = () => {
             
             <div className="flex gap-3">
               <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400">
-                <ShieldCheck size={16} />
+                <FaIcon icon="fa-solid fa-shield-halved" size={16} />
               </div>
               <div>
                 <h4 className="text-sm font-semibold text-white">Secure Workspace</h4>
@@ -63,7 +63,7 @@ export const RegisterPage: React.FC = () => {
         {/* Footer/Testimonial in Left Panel */}
         <div className="relative z-10 text-xs text-slate-500 flex justify-between items-center">
           <span>&copy; {new Date().getFullYear()} Naitu Crochet.</span>
-          <span className="flex items-center gap-1"><Heart size={12} className="text-rose-500 animate-pulse" /> Crafted with Love</span>
+          <span className="flex items-center gap-1"><FaIcon icon="fa-solid fa-heart" size={12} className="text-rose-500 animate-pulse" /> Crafted with Love</span>
         </div>
       </div>
 

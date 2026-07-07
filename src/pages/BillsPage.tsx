@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/shared/Layout';
-import { Plus, Eye, ArrowLeft, Loader2, FileText } from 'lucide-react';
+import { FaIcon } from '../components/shared/FaIcon';
 import { BillForm } from '../components/Bills/BillForm';
 import { BillDetailModal } from '../components/Bills/BillDetailModal';
 import { useAuth } from '../hooks/useAuth';
@@ -123,7 +123,7 @@ export const BillsPage: React.FC = () => {
                 onClick={() => setViewMode('list')}
                 className="btn-secondary flex items-center space-x-2 py-2.5 px-4.5"
               >
-                <ArrowLeft size={16} />
+                <FaIcon icon="fa-solid fa-arrow-left" size={16} />
                 <span>Back to List</span>
               </button>
             ) : (
@@ -131,7 +131,7 @@ export const BillsPage: React.FC = () => {
                 onClick={() => setViewMode('create')}
                 className="btn-primary flex items-center space-x-2 py-2.5 px-4.5"
               >
-                <Plus size={16} />
+                <FaIcon icon="fa-solid fa-plus" size={16} />
                 <span>New Bill</span>
               </button>
             )}
@@ -141,7 +141,7 @@ export const BillsPage: React.FC = () => {
         {/* Content Body */}
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <Loader2 className="animate-spin text-emerald-500" size={40} />
+            <FaIcon icon="fa-solid fa-spinner" className="animate-spin text-emerald-500" size={40} />
             <p className="text-slate-500 font-semibold">Loading invoices...</p>
           </div>
         ) : viewMode === 'create' ? (
@@ -170,7 +170,7 @@ export const BillsPage: React.FC = () => {
                     bills.map((bill) => (
                       <tr key={bill.id} className="hover:bg-slate-50/40 transition-colors">
                         <td className="p-4 font-bold text-slate-800 flex items-center space-x-2.5 font-mono">
-                          <FileText size={16} className="text-teal-650" />
+                          <FaIcon icon="fa-solid fa-file-invoice" size={16} className="text-teal-650" />
                           <span>{bill.billNo}</span>
                         </td>
                         <td className="p-4 font-bold text-slate-700">
@@ -192,7 +192,7 @@ export const BillsPage: React.FC = () => {
                               className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1"
                               title="View Invoice"
                             >
-                              <Eye size={14} />
+                              <FaIcon icon="fa-solid fa-eye" size={14} />
                               <span>View</span>
                             </button>
                           </div>

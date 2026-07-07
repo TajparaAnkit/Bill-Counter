@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Upload, Loader2, Info } from 'lucide-react';
+import { FaIcon } from '../shared/FaIcon';
 import { useToast } from '../../hooks/useToast';
 
 interface BulkImportModalProps {
@@ -144,7 +144,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
             onClick={onClose}
             className="hover:bg-white/20 p-1.5 rounded-full transition-colors text-white"
           >
-            <X size={20} />
+            <FaIcon icon="fa-solid fa-xmark" size={20} />
           </button>
         </div>
 
@@ -173,7 +173,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
           {importType === 'json' ? (
             <form onSubmit={handleJsonSubmit} className="space-y-4">
               <div className="bg-blue-50 text-blue-800 p-3.5 rounded-xl text-xs flex items-start space-x-2">
-                <Info size={16} className="mt-0.5 shrink-0" />
+                <FaIcon icon="fa-solid fa-circle-info" size={16} className="mt-0.5 shrink-0" />
                 <div>
                   <span className="font-bold">Format Required:</span> An array of objects.
                   <pre className="mt-1 bg-white/50 p-2 rounded text-[10px] font-mono select-all">
@@ -204,7 +204,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 size={18} className="animate-spin" />
+                      <FaIcon icon="fa-solid fa-spinner" size={18} className="animate-spin" />
                       <span>Importing...</span>
                     </>
                   ) : (
@@ -217,7 +217,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
             /* CSV Upload Zone */
             <div className="space-y-4">
               <div className="bg-blue-50 text-blue-800 p-3.5 rounded-xl text-xs flex items-start space-x-2">
-                <Info size={16} className="mt-0.5 shrink-0" />
+                <FaIcon icon="fa-solid fa-circle-info" size={16} className="mt-0.5 shrink-0" />
                 <div>
                   <span className="font-bold">Format Required:</span> First line must be `name, price`. Following lines are data.
                   <pre className="mt-1 bg-white/50 p-2 rounded text-[10px] font-mono select-all">
@@ -229,7 +229,7 @@ Mini Amigurumi Toy,299`}
               </div>
 
               <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-2xl p-10 cursor-pointer hover:border-green-500 hover:bg-green-50/30 transition-all text-center">
-                <Upload size={40} className="text-gray-400 mb-2" />
+                <FaIcon icon="fa-solid fa-upload" size={40} className="text-gray-400 mb-2" />
                 <span className="text-sm font-semibold text-gray-700">Click to upload CSV file</span>
                 <span className="text-xs text-gray-400 mt-1">Accepts standard .csv UTF-8 text files</span>
                 <input

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, Loader2 } from 'lucide-react';
+import { FaIcon } from '../shared/FaIcon';
 import { Product } from '../../types';
 import { useToast } from '../../hooks/useToast';
 
@@ -86,7 +86,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             onClick={onClose}
             className="hover:bg-white/20 p-1.5 rounded-full transition-colors"
           >
-            <X size={20} />
+            <FaIcon icon="fa-solid fa-xmark" size={20} />
           </button>
         </div>
 
@@ -127,7 +127,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             </label>
             <div className="flex items-center space-x-4">
               <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-4 cursor-pointer hover:border-green-500 hover:bg-green-50/50 transition-all w-32 h-32 text-center group">
-                <Upload size={24} className="text-gray-400 group-hover:text-green-600 transition-colors mb-1" />
+                <FaIcon icon="fa-solid fa-upload" size={24} className="text-gray-400 group-hover:text-green-600 transition-colors mb-1" />
                 <span className="text-xs text-gray-500 font-medium group-hover:text-green-600 transition-colors">
                   Upload file
                 </span>
@@ -154,7 +154,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                     }}
                     className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 shadow hover:bg-red-600 transition-colors"
                   >
-                    <X size={12} />
+                    <FaIcon icon="fa-solid fa-xmark" size={12} />
                   </button>
                 </div>
               ) : (
@@ -182,7 +182,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 size={18} className="animate-spin" />
+                  <FaIcon icon="fa-solid fa-spinner" size={18} className="animate-spin" />
                   <span>Saving...</span>
                 </>
               ) : (

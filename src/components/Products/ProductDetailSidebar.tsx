@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Calendar, DollarSign, Package } from 'lucide-react';
+import { FaIcon } from '../shared/FaIcon';
 import { Product } from '../../types';
 
 interface ProductDetailSidebarProps {
@@ -42,14 +42,14 @@ export const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({
         {/* Header */}
         <div className="p-6 border-b border-gray-150 flex justify-between items-center bg-gray-50">
           <h2 className="text-xl font-bold text-gray-800 flex items-center space-x-2">
-            <Package className="text-green-500" size={20} />
+            <FaIcon icon="fa-solid fa-box" className="text-green-500" size={20} />
             <span>Product Details</span>
           </h2>
           <button 
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1.5 rounded-full transition-all"
           >
-            <X size={20} />
+            <FaIcon icon="fa-solid fa-xmark" size={20} />
           </button>
         </div>
 
@@ -84,7 +84,7 @@ export const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({
 
             <div className="flex items-center space-x-3 bg-green-50 p-4 rounded-xl border border-green-100/50">
               <div className="p-2.5 bg-green-500 rounded-lg text-white">
-                <DollarSign size={20} />
+                <FaIcon icon="fa-solid fa-indian-rupee-sign" size={20} />
               </div>
               <div>
                 <span className="text-xs font-semibold text-green-700/80 uppercase">
@@ -97,7 +97,7 @@ export const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({
             </div>
 
             <div className="flex items-center space-x-3 bg-gray-50 p-4 rounded-xl border border-gray-100">
-              <Calendar className="text-gray-400" size={20} />
+              <FaIcon icon="fa-solid fa-calendar" className="text-gray-400" size={20} />
               <div>
                 <span className="text-xs text-gray-400 font-semibold block uppercase">
                   Date Added

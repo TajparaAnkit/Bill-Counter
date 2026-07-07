@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/shared/Layout';
-import { Plus, Download, Loader2 } from 'lucide-react';
+import { FaIcon } from '../components/shared/FaIcon';
 import { ProductTable } from '../components/Products/ProductTable';
 import { ProductFormModal } from '../components/Products/ProductFormModal';
 import { ProductDetailSidebar } from '../components/Products/ProductDetailSidebar';
@@ -117,7 +117,7 @@ export const ProductsPage: React.FC = () => {
               onClick={() => setIsImportOpen(true)}
               className="btn-secondary flex items-center space-x-2 py-2.5 px-4.5"
             >
-              <Download size={16} />
+              <FaIcon icon="fa-solid fa-download" size={16} />
               <span>Import</span>
             </button>
             <button 
@@ -127,7 +127,7 @@ export const ProductsPage: React.FC = () => {
               }}
               className="btn-primary flex items-center space-x-2 py-2.5 px-4.5"
             >
-              <Plus size={16} />
+              <FaIcon icon="fa-solid fa-plus" size={16} />
               <span>Add Product</span>
             </button>
           </div>
@@ -135,7 +135,7 @@ export const ProductsPage: React.FC = () => {
 
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <Loader2 className="animate-spin text-green-500" size={40} />
+            <FaIcon icon="fa-solid fa-spinner" className="animate-spin text-green-500" size={40} />
             <p className="text-gray-500 font-medium">Loading inventory...</p>
           </div>
         ) : (

@@ -8,7 +8,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../hooks/useToast';
 import { validateEmail, validatePassword, parseFirebaseError } from '../../utils/validators';
-import { Loader2, Mail, Lock, Store, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { FaIcon } from '../shared/FaIcon';
 
 export const RegisterForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -105,7 +105,7 @@ export const RegisterForm: React.FC = () => {
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-            <Store size={18} />
+            <FaIcon icon="fa-solid fa-store" size={18} />
           </div>
           <input
             type="text"
@@ -123,7 +123,7 @@ export const RegisterForm: React.FC = () => {
         </div>
         {errors.businessName && (
           <div className="flex items-center gap-1.5 mt-1.5 text-rose-400 text-xs font-medium">
-            <AlertCircle size={14} />
+            <FaIcon icon="fa-solid fa-circle-exclamation" size={14} />
             <span>{errors.businessName}</span>
           </div>
         )}
@@ -136,7 +136,7 @@ export const RegisterForm: React.FC = () => {
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-            <Mail size={18} />
+            <FaIcon icon="fa-solid fa-envelope" size={18} />
           </div>
           <input
             type="email"
@@ -154,7 +154,7 @@ export const RegisterForm: React.FC = () => {
         </div>
         {errors.email && (
           <div className="flex items-center gap-1.5 mt-1.5 text-rose-400 text-xs font-medium">
-            <AlertCircle size={14} />
+            <FaIcon icon="fa-solid fa-circle-exclamation" size={14} />
             <span>{errors.email}</span>
           </div>
         )}
@@ -167,7 +167,7 @@ export const RegisterForm: React.FC = () => {
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-            <Lock size={18} />
+            <FaIcon icon="fa-solid fa-lock" size={18} />
           </div>
           <input
             type={showPassword ? 'text' : 'password'}
@@ -188,12 +188,12 @@ export const RegisterForm: React.FC = () => {
             className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-350 transition-colors focus:outline-none"
             aria-label={showPassword ? 'Hide password' : 'Show password'}
           >
-            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            {showPassword ? <FaIcon icon="fa-solid fa-eye-slash" size={18} /> : <FaIcon icon="fa-solid fa-eye" size={18} />}
           </button>
         </div>
         {errors.password ? (
           <div className="flex items-start gap-1.5 mt-1.5 text-rose-400 text-xs font-medium">
-            <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
+            <FaIcon icon="fa-solid fa-circle-exclamation" size={14} className="mt-0.5 flex-shrink-0" />
             <span>{errors.password}</span>
           </div>
         ) : (
@@ -210,7 +210,7 @@ export const RegisterForm: React.FC = () => {
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-            <Lock size={18} />
+            <FaIcon icon="fa-solid fa-lock" size={18} />
           </div>
           <input
             type={showConfirmPassword ? 'text' : 'password'}
@@ -231,12 +231,12 @@ export const RegisterForm: React.FC = () => {
             className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-350 transition-colors focus:outline-none"
             aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
           >
-            {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            {showConfirmPassword ? <FaIcon icon="fa-solid fa-eye-slash" size={18} /> : <FaIcon icon="fa-solid fa-eye" size={18} />}
           </button>
         </div>
         {errors.confirmPassword && (
           <div className="flex items-center gap-1.5 mt-1.5 text-rose-400 text-xs font-medium">
-            <AlertCircle size={14} />
+            <FaIcon icon="fa-solid fa-circle-exclamation" size={14} />
             <span>{errors.confirmPassword}</span>
           </div>
         )}
@@ -250,7 +250,7 @@ export const RegisterForm: React.FC = () => {
       >
         {loading ? (
           <>
-            <Loader2 size={18} className="animate-spin" />
+            <FaIcon icon="fa-solid fa-spinner" size={18} className="animate-spin" />
             <span>Creating workspace...</span>
           </>
         ) : (

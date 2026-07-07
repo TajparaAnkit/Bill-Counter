@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Eye, Edit2, Trash2 } from 'lucide-react';
+import { FaIcon } from '../shared/FaIcon';
 import { Product } from '../../types';
 
 interface ProductTableProps {
@@ -26,7 +26,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
       {/* Search Header */}
       <div className="relative">
         <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Search size={18} className="text-gray-400" />
+          <FaIcon icon="fa-solid fa-magnifying-glass" size={18} className="text-gray-400" />
         </span>
         <input
           type="text"
@@ -81,21 +81,21 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                           className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                           title="View Details"
                         >
-                          <Eye size={18} />
+                          <FaIcon icon="fa-solid fa-eye" size={18} />
                         </button>
                         <button
                           onClick={() => onEdit(p)}
                           className="p-1.5 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
                           title="Edit"
                         >
-                          <Edit2 size={18} />
+                          <FaIcon icon="fa-solid fa-pen-to-square" size={18} />
                         </button>
                         <button
                           onClick={() => onDelete(p)}
                           className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                           title="Delete"
                         >
-                          <Trash2 size={18} />
+                          <FaIcon icon="fa-solid fa-trash" size={18} />
                         </button>
                       </div>
                     </td>
