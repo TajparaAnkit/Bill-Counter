@@ -1,8 +1,22 @@
 [
   {
-    "origin": ["http://localhost:5173", "http://localhost:3000"],
-    "method": ["GET", "HEAD", "PUT", "POST", "DELETE", "OPTIONS"],
-    "responseHeader": ["Content-Type", "Authorization"],
+    "origin": [
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "https://tajparaankit.github.io"
+    ],
+    "method": [
+      "GET",
+      "HEAD",
+      "PUT",
+      "POST",
+      "DELETE",
+      "OPTIONS"
+    ],
+    "responseHeader": [
+      "Content-Type",
+      "Authorization"
+    ],
     "maxAgeSeconds": 3600
   }
 ]
