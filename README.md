@@ -1,41 +1,45 @@
-# Naitu Crochet - SaaS Platform
+# Bill Counter - SaaS Platform
 
-A modern, scalable SaaS application for managing crochet business inventory and billing. Built with React, Vite, Tailwind CSS, and Firebase.
+A modern, scalable SaaS application for managing small business inventory and billing. Built with React 19, Vite, Tailwind CSS, shadcn/ui, and Firebase.
 
 ## 🚀 Features
 
 - ✅ User Authentication (Register/Login)
 - ✅ Product Management (Add, Edit, Delete, Bulk Import)
 - ✅ Invoice/Bill Creation with Line Items
+- ✅ Bill Detail View + PDF Export (vector, print-ready A4)
+- ✅ QR / Barcode on Invoices (configurable, swappable image)
 - ✅ Sales Dashboard with Metrics
+- ✅ Business Profile / Settings
 - ✅ Real-time Data Sync with Firestore
 - ✅ Responsive Design (Mobile-Friendly)
-- ✅ Modal-based Workflows
+- ✅ Modal & Drawer-based Workflows
+- ✅ Toast Notifications & Error Boundary
 - ✅ Multi-user SaaS Support
 
 ## 📋 Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 18, Vite, TypeScript |
-| Styling | Tailwind CSS, shadcn/ui |
+| Frontend | React 19, Vite 8, TypeScript |
+| UI / Styling | Tailwind CSS v4, shadcn/ui (built on Radix UI primitives) |
 | State Management | Zustand |
-| Routing | React Router v6 |
+| Routing | React Router v7 |
 | Backend/DB | Firebase (Auth + Firestore + Storage) |
-| HTTP Client | Axios |
-| Icons | Lucide React |
+| Icons | FontAwesome |
+| PDF Export | jsPDF + jspdf-autotable (loaded on demand from CDN) |
 
 ## 🛠 Prerequisites
 
-- **Node.js** 16+ ([Download](https://nodejs.org/))
-- **npm** 8+ or **yarn**
+- **Node.js** 18+ recommended ([Download](https://nodejs.org/))
+- **npm** 9+ or **yarn**
 - **Firebase Account** ([Create Free](https://console.firebase.google.com/))
 
 ## 📦 Installation & Setup
 
-### 1. Clone & Navigate
+### 1. Navigate to the Project
 ```bash
-cd d:\naitu-saas
+cd d:\Bill-Counter
 ```
 
 ### 2. Install Dependencies
@@ -51,6 +55,9 @@ npm install
 5. Copy your config values
 
 ### 4. Configure Environment Variables
+
+> ⚠️ **Required.** Without a valid `.env.local`, the app throws `FirebaseError: auth/invalid-api-key` on startup.
+
 ```bash
 cp .env.example .env.local
 ```
@@ -80,30 +87,36 @@ In your Firebase Console:
 - Select your region
 
 **Firestore Security Rules:**
-Replace the rules with:
+
+This app stores products and bills in **flat top-level collections**, each document carrying a `userId` field (queries filter with `where('userId', '==', uid)`). Use rules that scope access by that field:
+
 ```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // User documents - only accessible by the user
+    // User profile documents - only accessible by the owner
     match /users/{userId} {
-      allow read, write: if request.auth.uid == userId;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Products - scoped to user
-    match /products/{userId}/items/{document=**} {
-      allow read, write: if request.auth.uid == userId;
+    // Products - owner-scoped via the userId field
+    match /products/{productId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
-    // Bills - scoped to user
-    match /bills/{userId}/items/{document=**} {
-      allow read, write: if request.auth.uid == userId;
+    // Bills - owner-scoped via the userId field
+    match /bills/{billId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
   }
 }
 ```
 
-**Storage:**
+**Storage** (optional — only needed if you upload product images):
 - Go to Storage > Rules
 - Replace with:
 ```javascript
@@ -111,7 +124,7 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     match /users/{userId}/{allPaths=**} {
-      allow read, write: if request.auth.uid == userId;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
@@ -122,27 +135,35 @@ service firebase.storage {
 npm run dev
 ```
 
-The app will open at `http://localhost:5173`
+The app opens at `http://localhost:5173` (Vite auto-selects the next free port, e.g. `5174`, if 5173 is in use).
 
 ## 📁 Project Structure
 
 ```
-naitu-saas/
+Bill-Counter/
 ├── src/
 │   ├── components/
 │   │   ├── Auth/
 │   │   │   ├── LoginForm.tsx
 │   │   │   ├── RegisterForm.tsx
 │   │   │   └── ProtectedRoute.tsx
-│   │   ├── Dashboard/
-│   │   │   ├── MetricsCard.tsx
-│   │   │   └── DashboardMetrics.tsx
-│   │   ├── Products/           # (Phase 3)
-│   │   ├── Bills/              # (Phase 4)
-│   │   └── shared/
-│   │       ├── Header.tsx
-│   │       ├── Sidebar.tsx
-│   │       └── Layout.tsx
+│   │   ├── Products/
+│   │   │   ├── ProductTable.tsx
+│   │   │   ├── ProductFormModal.tsx
+│   │   │   ├── ProductDetailSidebar.tsx   # slide-out product detail panel
+│   │   │   └── BulkImportModal.tsx        # JSON / CSV import
+│   │   ├── Bills/
+│   │   │   ├── BillForm.tsx
+│   │   │   └── BillDetailModal.tsx        # invoice preview + PDF download (portal-based)
+│   │   ├── shared/
+│   │   │   ├── Header.tsx                 # logo + clock + user menu
+│   │   │   ├── Layout.tsx
+│   │   │   ├── UserMenu.tsx               # dropdown holding all navigation + logout
+│   │   │   ├── FaIcon.tsx
+│   │   │   ├── ToastContainer.tsx
+│   │   │   └── ErrorBoundary.tsx
+│   │   └── ui/
+│   │       └── dropdown-menu.tsx          # shadcn/ui dropdown (Radix-based)
 │   ├── pages/
 │   │   ├── LoginPage.tsx
 │   │   ├── RegisterPage.tsx
@@ -152,18 +173,22 @@ naitu-saas/
 │   │   └── SettingsPage.tsx
 │   ├── services/
 │   │   ├── firebase.ts          # Firebase config & init
-│   │   ├── productService.ts    # (Phase 3)
-│   │   └── billService.ts       # (Phase 4)
+│   │   └── db.ts                # Firestore data access (products, bills, profile)
 │   ├── store/
-│   │   └── auth.ts              # Zustand auth store
+│   │   ├── auth.ts              # Zustand auth store
+│   │   └── toast.ts             # Zustand toast store
 │   ├── hooks/
 │   │   ├── useAuth.ts
-│   │   └── useFetch.ts          # (Phase 3)
+│   │   └── useToast.ts
 │   ├── types/
 │   │   └── index.ts             # TypeScript interfaces
 │   ├── utils/
-│   │   ├── formatters.ts
-│   │   └── validators.ts        # (Phase 3)
+│   │   ├── validators.ts        # email/password validation + Firebase error mapping
+│   │   └── pdf.ts               # jsPDF-based invoice export
+│   ├── assets/
+│   │   └── qr.ts                # invoice QR / barcode image (swappable sample)
+│   ├── lib/
+│   │   └── utils.ts             # cn() class-name helper (clsx + tailwind-merge)
 │   ├── App.tsx                  # Main router
 │   ├── main.tsx
 │   └── index.css
@@ -172,7 +197,10 @@ naitu-saas/
 ├── package.json
 ├── vite.config.ts
 ├── tailwind.config.js
+├── postcss.config.js
+├── components.json
 ├── tsconfig.json
+├── tsconfig.node.json
 ├── .env.example
 └── README.md
 ```
@@ -197,28 +225,55 @@ npm run preview
 ## 📝 Testing the App
 
 1. **Register:** Go to `/register`, create an account with email & business name
-2. **Login:** Use credentials to login
-3. **Dashboard:** View empty metrics (will populate with data in Phase 3-5)
-4. **Navigate:** Use sidebar to explore Products, Bills, and Settings pages
+2. **Login:** Use those credentials to log in
+3. **Products:** Add products individually or via bulk import
+4. **Bills:** Create an invoice with line items, then view it and export to PDF
+5. **Dashboard:** Review sales metrics
+6. **Settings:** Update your business profile (name, address, phone, invoice notes)
+
+> **Navigation:** All pages (Dashboard, Products, New Invoice, Settings) and Logout live in the **user menu** — the avatar dropdown at the top-right of the header.
+
+## 🎨 Customization
+
+### App Name / Branding
+The app name (**Bill Counter**) appears in the header, login/register pages, and browser tab. To rename, update the text in `src/components/shared/Header.tsx`, `src/pages/LoginPage.tsx`, `src/pages/RegisterPage.tsx`, and the `<title>` in `index.html`. The business name shown on invoices comes from **Settings** (per user), and falls back to `'Bill Counter'` in `src/components/Bills/BillDetailModal.tsx` and `src/utils/pdf.ts`.
+
+### Invoice QR / Barcode
+Invoices show a QR/barcode driven by a single constant in [`src/assets/qr.ts`](src/assets/qr.ts). It ships with a generated placeholder — replace `INVOICE_QR` with your own image to use it everywhere (both the on-screen invoice and the PDF):
+
+```ts
+export const INVOICE_QR = 'data:image/png;base64,....';   // data URL (recommended)
+// or a hosted URL (must allow CORS), or an imported image file
+export const INVOICE_QR_CAPTION = 'Scan to pay / verify'; // set '' to hide
+```
 
 ## 🔐 Firestore Collections Schema
 
+Collections are flat and top-level; each product/bill document stores its owner's `userId`.
+
 ```
 users/{userId}
+├── uid: string
 ├── email: string
 ├── businessName: string
+├── address: string (optional)
+├── phone: string (optional)
+├── invoiceNotes: string (optional)
 └── createdAt: timestamp
 
-products/{userId}/items/{productId}
+products/{productId}
+├── userId: string
 ├── name: string
 ├── price: number
 ├── imageUrl: string (optional)
 └── createdAt: timestamp
 
-bills/{userId}/items/{billId}
+bills/{billId}
+├── userId: string
 ├── billNo: string
+├── billSeqNum: number
 ├── customerName: string
-├── items: array<{productName, quantity, price, total}>
+├── items: array<{ productId?, productName, quantity, price, total }>
 ├── subtotal: number
 ├── tax: number
 ├── total: number
@@ -230,16 +285,15 @@ bills/{userId}/items/{billId}
 
 | Script | Purpose |
 |--------|---------|
-| `npm run dev` | Start Vite dev server on port 5173 |
-| `npm run build` | Build for production |
-| `npm run preview` | Preview production build locally |
+| `npm run dev` | Start Vite dev server (default port 5173) |
+| `npm run build` | Type-check (`tsc`) and build for production |
+| `npm run preview` | Preview the production build locally |
 
 ## 🐛 Troubleshooting
 
-### Firebase Config Not Loading
-- Verify `.env.local` file exists
-- Check all environment variables are set correctly
-- Restart dev server after changing `.env.local`
+### `FirebaseError: auth/invalid-api-key` on startup
+- `.env.local` is missing or has placeholder values. Create it from `.env.example` and fill in real Firebase credentials.
+- Restart the dev server after editing `.env.local` (Vite only reads env vars at startup).
 
 ### "Cannot find module 'firebase'"
 ```bash
@@ -247,23 +301,15 @@ npm install
 ```
 
 ### Port 5173 Already in Use
-Vite will automatically use the next available port, or specify manually:
+Vite automatically uses the next available port, or specify one manually:
 ```bash
 npm run dev -- --port 3000
 ```
 
-### Firestore Security Error
-- Check Firestore Rules are updated correctly
-- Ensure user is logged in (token available)
-- Verify collection paths match rules
-
-## 📖 Implementation Phases
-
-- ✅ **Phase 1:** Project Setup & Configuration (COMPLETE)
-- ⏳ **Phase 2:** Authentication System (IN PROGRESS - Core done, refinement needed)
-- ⏳ **Phase 3:** Product Management (Ready for implementation)
-- ⏳ **Phase 4:** Bill Management (Ready for implementation)
-- ⏳ **Phase 5:** Dashboard & Polish (Ready for implementation)
+### Firestore Permission Error
+- Confirm the Firestore Rules above are published
+- Ensure the user is logged in
+- Confirm each product/bill document has a `userId` field matching the signed-in user
 
 ## 🚢 Deployment
 
@@ -276,7 +322,7 @@ npm install -g firebase-tools
 # Login
 firebase login
 
-# Initialize Firebase
+# Initialize Firebase (set "dist" as the public directory)
 firebase init hosting
 
 # Build
@@ -295,23 +341,16 @@ npm i -g vercel
 vercel
 ```
 
+Set the Firebase `VITE_*` environment variables in your hosting provider's dashboard.
+
 ## 📧 Support
 
 For issues or questions:
-1. Check Firestore Rules in Console
-2. Review browser console for errors
+1. Check Firestore Rules in the Console
+2. Review the browser console for errors
 3. Verify Firebase project configuration
 4. Check `.env.local` file setup
 
 ## 📄 License
 
 MIT
-
----
-
-## 🎯 Next Steps
-
-1. **Phase 2 Completion:** Refine auth UI with error handling
-2. **Phase 3:** Implement Product CRUD operations
-3. **Phase 4:** Build Bill creation and management
-4. **Phase 5:** Add analytics and real-time dashboard updates

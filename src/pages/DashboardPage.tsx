@@ -6,7 +6,7 @@ import { useToast } from '../hooks/useToast';
 import { getBills, getProducts, getBusinessProfile } from '../services/db';
 import { Bill, Product, UserProfile } from '../types';
 import { FaIcon } from '../components/shared/FaIcon';
-import { Link } from 'react-router-dom';
+import { getAmountDue, getPaymentStatus } from '../utils/payment';
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -70,6 +70,34 @@ export const DashboardPage: React.FC = () => {
     ? bills.reduce((sum, b) => sum + b.total, 0) / totalBills
     : 0;
 
+  // Receivables
+  const outstanding = bills.reduce((sum, b) => sum + getAmountDue(b), 0);
+  const paidCount = bills.filter((b) => getPaymentStatus(b) === 'paid').length;
+  const unpaidCount = bills.filter((b) => getPaymentStatus(b) !== 'paid').length;
+
+  // Last 7 days sales trend (for the mini bar chart)
+  const last7Days = (() => {
+    const days: { label: string; total: number }[] = [];
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      const start = d.getTime();
+      const end = start + 86400000;
+      const total = bills
+        .filter((b) => {
+          const t = getTimestampMs(b.createdAt);
+          return t >= start && t < end;
+        })
+        .reduce((s, b) => s + b.total, 0);
+      days.push({ label: d.toLocaleDateString('en-IN', { weekday: 'short' }), total });
+    }
+    return days;
+  })();
+  const maxDay = Math.max(1, ...last7Days.map((d) => d.total));
+  const sevenDayTotal = last7Days.reduce((s, d) => s + d.total, 0);
+
   // Recent Bills (Top 5)
   const recentBills = bills.slice(0, 5);
 
@@ -111,7 +139,7 @@ export const DashboardPage: React.FC = () => {
     return (
       <Layout>
         <div className="flex flex-col items-center justify-center py-40 space-y-4">
-          <FaIcon icon="fa-solid fa-spinner" className="animate-spin text-emerald-500" size={40} />
+          <FaIcon icon="fa-solid fa-spinner" className="animate-spin text-blue-600" size={40} />
           <p className="text-slate-500 font-semibold">Loading dashboard overview...</p>
         </div>
       </Layout>
@@ -124,7 +152,7 @@ export const DashboardPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="metric-card slide-in-up relative" style={{ animationDelay: '0s' }}>
             <div className="absolute top-3 right-3 metric-icon">
-              <FaIcon icon="fa-solid fa-box" size={16} className="text-emerald-600" />
+              <FaIcon icon="fa-solid fa-box" size={16} className="text-blue-600" />
             </div>
             <div className="label">TOTAL PRODUCTS</div>
             <div className="value">{totalProducts}</div>
@@ -164,49 +192,31 @@ export const DashboardPage: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="space-y-6">
-            <div className="trading-card p-4">
-              <h3 className="text-lg font-bold mb-4 text-center">TRADING ACTIONS</h3>
-              <div className="space-y-4">
-                <Link to="/bills" state={{ create: true }} className="block">
-                  <div className="action-btn action-new hover:brightness-95">
-                    <div className="action-icon">
-                      <FaIcon icon="fa-solid fa-plus" size={18} />
+            {/* Last 7 days sales trend */}
+            <div className="trading-card p-5">
+              <div className="flex items-baseline justify-between mb-1">
+                <h3 className="text-lg font-bold">LAST 7 DAYS</h3>
+                <span className="text-xs font-bold text-blue-700">₹{sevenDayTotal.toFixed(0)}</span>
+              </div>
+              <p className="text-xs text-slate-400 mb-5">Daily sales trend</p>
+              <div className="flex items-end justify-between gap-2">
+                {last7Days.map((d, i) => (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
+                    <div className="w-full h-28 flex items-end justify-center">
+                      <div
+                        className="w-6 rounded-t-lg bg-gradient-to-t from-blue-700 to-blue-500 transition-all duration-300 group-hover:from-blue-800 group-hover:to-blue-600"
+                        style={{ height: `${Math.max(4, (d.total / maxDay) * 112)}px` }}
+                        title={`₹${d.total.toFixed(0)}`}
+                      />
                     </div>
-                    <div>
-                      <div className="font-bold text-sm">NEW BILL</div>
-                      <div className="text-xs text-emerald-100">Create transaction</div>
-                    </div>
+                    <span className="text-[10px] font-semibold text-slate-400">{d.label}</span>
                   </div>
-                </Link>
-
-                <Link to="/products" className="block">
-                  <div className="action-btn action-add hover:brightness-95">
-                    <div className="action-icon">
-                      <FaIcon icon="fa-solid fa-bag-shopping" size={18} />
-                    </div>
-                    <div>
-                      <div className="font-bold text-sm">ADD PRODUCT</div>
-                      <div className="text-xs text-sky-100">Update inventory</div>
-                    </div>
-                  </div>
-                </Link>
-
-                <Link to="/dashboard" className="block">
-                  <div className="action-btn action-dashboard hover:brightness-95">
-                    <div className="action-icon">
-                      <FaIcon icon="fa-solid fa-box" size={18} />
-                    </div>
-                    <div>
-                      <div className="font-bold text-sm">DASHBOARD</div>
-                      <div className="text-xs text-violet-100">View analytics</div>
-                    </div>
-                  </div>
-                </Link>
+                ))}
               </div>
             </div>
 
             <div className="trading-card p-4">
-              <h3 className="text-lg font-bold mb-4">MARKET STATUS</h3>
+              <h3 className="text-lg font-bold mb-4">STORE STATUS</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Status</span>
@@ -217,7 +227,7 @@ export const DashboardPage: React.FC = () => {
                   <span className="font-mono text-sm text-slate-700">{new Date().toLocaleTimeString('en-US', { hour12: true })}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Data Points</span>
+                  <span className="text-slate-400">Total Records</span>
                   <span className="text-sky-500 font-semibold">{totalProducts + totalBills}</span>
                 </div>
               </div>
@@ -236,10 +246,10 @@ export const DashboardPage: React.FC = () => {
                   recentBills.map((bill) => (
                     <div
                       key={bill.id}
-                      className="flex items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-4 transition hover:border-emerald-200"
+                      className="flex items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-200"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="grid h-12 w-12 place-items-center rounded-3xl bg-emerald-50 text-emerald-700">
+                        <div className="grid h-12 w-12 place-items-center rounded-3xl bg-blue-50 text-blue-700">
                           <FaIcon icon="fa-solid fa-file-invoice" size={18} />
                         </div>
                         <div>
@@ -254,7 +264,7 @@ export const DashboardPage: React.FC = () => {
                             setSelectedBill(bill);
                             setIsDetailOpen(true);
                           }}
-                          className="rounded-2xl border border-slate-200 bg-white p-2 text-slate-500 transition hover:text-emerald-700"
+                          className="rounded-2xl border border-slate-200 bg-white p-2 text-slate-500 transition hover:text-blue-700"
                           title="View Invoice"
                         >
                           <FaIcon icon="fa-solid fa-eye" size={16} />
@@ -310,19 +320,19 @@ export const DashboardPage: React.FC = () => {
               </div>
 
               <div className="trading-card p-4">
-                <h3 className="text-lg font-bold mb-4">QUICK STATS</h3>
+                <h3 className="text-lg font-bold mb-4">PAYMENTS</h3>
                 <div className="space-y-3 text-sm text-slate-700">
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Success Rate</span>
-                    <span className="text-emerald-500 font-bold">100%</span>
+                    <span className="text-slate-400">Outstanding Dues</span>
+                    <span className="text-rose-500 font-bold">₹{outstanding.toFixed(0)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Avg Processing</span>
-                    <span className="text-sky-500 font-bold">2.3s</span>
+                    <span className="text-slate-400">Paid Invoices</span>
+                    <span className="text-emerald-500 font-bold">{paidCount}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Active Sessions</span>
-                    <span className="text-violet-500 font-bold">1</span>
+                    <span className="text-slate-400">Unpaid / Partial</span>
+                    <span className="text-amber-500 font-bold">{unpaidCount}</span>
                   </div>
                 </div>
               </div>

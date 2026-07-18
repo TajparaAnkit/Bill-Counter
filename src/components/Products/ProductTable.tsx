@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaIcon } from '../shared/FaIcon';
 import { Product } from '../../types';
+import { Pagination } from '../ui/Pagination';
 
 interface ProductTableProps {
   products: Product[];
@@ -16,10 +17,19 @@ export const ProductTable: React.FC<ProductTableProps> = ({
   onDelete,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Reset to first page whenever the search or dataset changes.
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, products.length]);
+
+  const pagedProducts = filteredProducts.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div className="space-y-4">
@@ -33,7 +43,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Search products by name..."
-          className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl bg-white shadow-xs focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+          className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl bg-white shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
         />
       </div>
 
@@ -50,8 +60,8 @@ export const ProductTable: React.FC<ProductTableProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-150">
-              {filteredProducts.length > 0 ? (
-                filteredProducts.map((p) => (
+              {pagedProducts.length > 0 ? (
+                pagedProducts.map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="p-4">
                       <div className="w-12 h-12 rounded-lg overflow-hidden border border-gray-100 bg-gray-50">
@@ -71,7 +81,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                     <td className="p-4 font-semibold text-gray-800">
                       {p.name}
                     </td>
-                    <td className="p-4 font-bold text-green-600">
+                    <td className="p-4 font-bold text-blue-600">
                       ₹{p.price.toFixed(2)}
                     </td>
                     <td className="p-4">
@@ -111,6 +121,17 @@ export const ProductTable: React.FC<ProductTableProps> = ({
             </tbody>
           </table>
         </div>
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={filteredProducts.length}
+          onPageChange={setPage}
+          onPageSizeChange={(s) => {
+            setPageSize(s);
+            setPage(1);
+          }}
+          itemLabel="products"
+        />
       </div>
     </div>
   );

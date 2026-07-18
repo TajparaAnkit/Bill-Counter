@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
+@import "@fontsource-variable/plus-jakarta-sans";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -11,7 +12,7 @@
     min-height: 64px;
   }
   .trading-card:hover {
-    @apply bg-white border-emerald-200 shadow-md;
+    @apply bg-white border-blue-200 shadow-md;
     transform: translateY(-2px);
   }
 
@@ -45,15 +46,15 @@
   }
 
   .action-new {
-    background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+    background: linear-gradient(90deg, #1e3a8a 0%, #2563eb 100%);
   }
 
   .action-add {
-    background: linear-gradient(90deg, #0ea5e9 0%, #2563eb 100%);
+    background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
   }
 
   .action-dashboard {
-    background: linear-gradient(90deg, #8b5cf6 0%, #7c3aed 100%);
+    background: linear-gradient(90deg, #334155 0%, #0f172a 100%);
   }
 
   .recent-card {
@@ -86,25 +87,29 @@
   animation: slideInUp 0.6s ease-out forwards;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/*
+ * NOTE: Do NOT add an unlayered `* { margin:0; padding:0 }` reset here.
+ * Tailwind v4 keeps all its utilities inside @layer, and unlayered CSS
+ * outranks any layered rule — so a bare `*` reset silently overrides every
+ * margin/padding utility (mx-auto, px-*, p-*, space-y-*), which breaks
+ * centering and spacing app-wide. Tailwind's Preflight already resets
+ * margins and sets box-sizing: border-box, so no manual reset is needed.
+ */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
 
-html {
-  scroll-behavior: smooth;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-}
-
-body {
-  background-color: #f8fafc;
-  color: #1e293b;
+  body {
+    background-color: #f8fafc;
+    color: #1e293b;
+  }
 }
 
 @layer components {
   .btn-primary {
-    @apply px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-500 text-white font-semibold rounded-xl hover:from-emerald-700 hover:to-teal-600 shadow-md shadow-emerald-100/50 hover:shadow-lg hover:shadow-emerald-200/60 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 ease-out cursor-pointer;
+    @apply px-4 py-2 bg-gradient-to-r from-blue-800 to-blue-600 text-white font-semibold rounded-xl hover:from-blue-900 hover:to-blue-700 shadow-md shadow-blue-200/50 hover:shadow-lg hover:shadow-blue-300/50 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 ease-out cursor-pointer;
   }
 
   .btn-secondary {
@@ -112,15 +117,15 @@ body {
   }
 
   .card {
-    @apply bg-white rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] p-6 transition-all duration-300 ease-out hover:shadow-[0_12px_40px_rgba(16,185,129,0.06)] hover:border-emerald-500/10 hover:-translate-y-0.5;
+    @apply bg-white rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] p-6 transition-all duration-300 ease-out hover:shadow-[0_12px_40px_rgba(37,99,235,0.08)] hover:border-blue-500/10 hover:-translate-y-0.5;
   }
 
   .card-glass {
-    @apply bg-white/70 backdrop-blur-md border border-white/60 shadow-[0_8px_32px_rgba(142,153,147,0.08)] p-6 transition-all duration-300 ease-out hover:bg-white/80 hover:shadow-[0_12px_40px_rgba(16,185,129,0.06)] hover:border-emerald-500/20 hover:-translate-y-0.5;
+    @apply bg-white/70 backdrop-blur-md border border-white/60 shadow-[0_8px_32px_rgba(30,41,59,0.08)] p-6 transition-all duration-300 ease-out hover:bg-white/80 hover:shadow-[0_12px_40px_rgba(37,99,235,0.06)] hover:border-blue-500/20 hover:-translate-y-0.5;
   }
 
   .input-field {
-    @apply w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white text-slate-800 placeholder-slate-400 transition-all duration-300;
+    @apply w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 focus:bg-white text-slate-800 placeholder-slate-400 transition-all duration-300;
   }
 }
 
@@ -156,8 +161,9 @@ body {
 }
 
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: 'Inter Variable', sans-serif;
+  --font-display: 'Plus Jakarta Sans Variable', 'Inter Variable', system-ui, sans-serif;
+  --font-heading: var(--font-display);
+  --font-sans: 'Inter Variable', system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -276,5 +282,10 @@ body {
   }
   html {
     @apply font-sans;
+  }
+  /* Modern corporate display font for all headings */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
   }
 }

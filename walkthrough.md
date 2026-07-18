@@ -1,4 +1,4 @@
-# Implementation Walkthrough - Naitu Crochet SaaS (Phase 3, 4 & 5)
+# Implementation Walkthrough - Bill Counter SaaS (Phase 3, 4 & 5)
 
 We have successfully migrated the HTML-based invoice tools from the reference project into a modern, multi-tenant React + Vite + Firebase SaaS platform.
 

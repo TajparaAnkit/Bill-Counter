@@ -1,16 +1,19 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './components/Auth/ProtectedRoute';
+import { ConfirmProvider } from './components/ui/confirm';
 import { ToastContainer } from './components/shared/ToastContainer';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProductsPage } from './pages/ProductsPage';
+import { CustomersPage } from './pages/CustomersPage';
 import { BillsPage } from './pages/BillsPage';
 import { SettingsPage } from './pages/SettingsPage';
 
 function App() {
   return (
     <BrowserRouter>
+      <ConfirmProvider>
       <ToastContainer />
       <Routes>
         {/* Public Routes */}
@@ -35,6 +38,14 @@ function App() {
           }
         />
         <Route
+          path="/customers"
+          element={
+            <ProtectedRoute>
+              <CustomersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/bills"
           element={
             <ProtectedRoute>
@@ -54,6 +65,7 @@ function App() {
         {/* Default redirect */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>
+      </ConfirmProvider>
     </BrowserRouter>
   );
 }

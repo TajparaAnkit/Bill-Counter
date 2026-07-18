@@ -1,8 +1,5 @@
 import { useState } from 'react';
-import {
-  createUserWithEmailAndPassword,
-  updateProfile,
-} from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth, db } from '../../services/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
@@ -16,7 +13,6 @@ export const RegisterForm: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{
     email?: string;
@@ -29,232 +25,165 @@ export const RegisterForm: React.FC = () => {
 
   const validateForm = (): boolean => {
     const newErrors: typeof errors = {};
-
-    if (!businessName.trim()) {
-      newErrors.businessName = 'Business name is required';
-    }
-
-    if (!email) {
-      newErrors.email = 'Email is required';
-    } else if (!validateEmail(email)) {
-      newErrors.email = 'Please enter a valid email';
-    }
-
-    const passwordValidation = validatePassword(password);
-    if (!password) {
-      newErrors.password = 'Password is required';
-    } else if (!passwordValidation.valid) {
-      newErrors.password = passwordValidation.message;
-    }
-
-    if (!confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-
+    if (!businessName.trim()) newErrors.businessName = 'Business name is required';
+    if (!email) newErrors.email = 'Email is required';
+    else if (!validateEmail(email)) newErrors.email = 'Please enter a valid email';
+    const pw = validatePassword(password);
+    if (!password) newErrors.password = 'Password is required';
+    else if (!pw.valid) newErrors.password = pw.message;
+    if (!confirmPassword) newErrors.confirmPassword = 'Please confirm your password';
+    else if (password !== confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!validateForm()) return;
-
     setLoading(true);
-
     try {
-      // Create user account
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-
-      // Update profile with business name
-      await updateProfile(userCredential.user, {
-        displayName: businessName,
-      });
-
-      // Create user document in Firestore
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(cred.user, { displayName: businessName });
+      await setDoc(doc(db, 'users', cred.user.uid), {
         email,
         businessName,
         createdAt: new Date(),
-        uid: userCredential.user.uid,
+        uid: cred.user.uid,
       });
-
       toast.success('Account created successfully! Redirecting...');
       setTimeout(() => navigate('/dashboard'), 500);
     } catch (err: any) {
-      const errorMessage = parseFirebaseError(err);
-      toast.error(errorMessage);
+      toast.error(parseFirebaseError(err));
       console.error('Registration error:', err);
     } finally {
       setLoading(false);
     }
   };
 
+  const clear = (k: keyof typeof errors) => {
+    if (errors[k]) setErrors({ ...errors, [k]: undefined });
+  };
+
+  const inputBase =
+    'w-full pl-10 pr-4 py-2.5 rounded-xl border bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-4 transition-all duration-200';
+  const okRing = 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/10';
+  const errRing = 'border-rose-400 focus:border-rose-400 focus:ring-rose-500/10';
+
+  const Field = ({
+    icon,
+    children,
+    error,
+  }: {
+    icon: string;
+    children: React.ReactNode;
+    error?: string;
+  }) => (
+    <div>
+      <div className="relative">
+        <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+          <FaIcon icon={icon} size={16} />
+        </span>
+        {children}
+      </div>
+      {error && (
+        <p className="flex items-center gap-1.5 mt-1.5 text-rose-500 text-xs font-medium">
+          <FaIcon icon="fa-solid fa-circle-exclamation" size={13} />
+          {error}
+        </p>
+      )}
+    </div>
+  );
+
   return (
     <form onSubmit={handleRegister} className="space-y-4">
-      {/* Business Name Input */}
       <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-          Business / Brand Name
-        </label>
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-            <FaIcon icon="fa-solid fa-store" size={18} />
-          </div>
+        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Business / Brand name</label>
+        <Field icon="fa-solid fa-store" error={errors.businessName}>
           <input
             type="text"
             value={businessName}
             onChange={(e) => {
               setBusinessName(e.target.value);
-              if (errors.businessName) setErrors({ ...errors, businessName: undefined });
+              clear('businessName');
             }}
             disabled={loading}
-            className={`w-full pl-10 pr-4 py-2.5 bg-slate-900/60 border ${
-              errors.businessName ? 'border-rose-500/80 focus:ring-rose-500/20' : 'border-slate-800 focus:border-emerald-500 focus:ring-emerald-500/10'
-            } rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-4 transition-all duration-200`}
-            placeholder="e.g. Naitu Crochet"
+            className={`${inputBase} ${errors.businessName ? errRing : okRing}`}
+            placeholder="e.g. Bill Counter"
           />
-        </div>
-        {errors.businessName && (
-          <div className="flex items-center gap-1.5 mt-1.5 text-rose-400 text-xs font-medium">
-            <FaIcon icon="fa-solid fa-circle-exclamation" size={14} />
-            <span>{errors.businessName}</span>
-          </div>
-        )}
+        </Field>
       </div>
 
-      {/* Email Input */}
       <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-          Email Address
-        </label>
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-            <FaIcon icon="fa-solid fa-envelope" size={18} />
-          </div>
+        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email address</label>
+        <Field icon="fa-solid fa-envelope" error={errors.email}>
           <input
             type="email"
             value={email}
             onChange={(e) => {
               setEmail(e.target.value);
-              if (errors.email) setErrors({ ...errors, email: undefined });
+              clear('email');
             }}
             disabled={loading}
-            className={`w-full pl-10 pr-4 py-2.5 bg-slate-900/60 border ${
-              errors.email ? 'border-rose-500/80 focus:ring-rose-500/20' : 'border-slate-800 focus:border-emerald-500 focus:ring-emerald-500/10'
-            } rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-4 transition-all duration-200`}
+            className={`${inputBase} ${errors.email ? errRing : okRing}`}
             placeholder="name@business.com"
           />
-        </div>
-        {errors.email && (
-          <div className="flex items-center gap-1.5 mt-1.5 text-rose-400 text-xs font-medium">
-            <FaIcon icon="fa-solid fa-circle-exclamation" size={14} />
-            <span>{errors.email}</span>
-          </div>
-        )}
+        </Field>
       </div>
 
-      {/* Password Input */}
       <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-          Password
-        </label>
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-            <FaIcon icon="fa-solid fa-lock" size={18} />
-          </div>
+        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Password</label>
+        <Field icon="fa-solid fa-lock" error={errors.password}>
           <input
             type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={(e) => {
               setPassword(e.target.value);
-              if (errors.password) setErrors({ ...errors, password: undefined });
+              clear('password');
             }}
             disabled={loading}
-            className={`w-full pl-10 pr-10 py-2.5 bg-slate-900/60 border ${
-              errors.password ? 'border-rose-500/80 focus:ring-rose-500/20' : 'border-slate-800 focus:border-emerald-500 focus:ring-emerald-500/10'
-            } rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-4 transition-all duration-200`}
-            placeholder="••••••••"
+            className={`${inputBase} pr-10 ${errors.password ? errRing : okRing}`}
+            placeholder="Min 6 chars, 1 uppercase, 1 number"
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-350 transition-colors focus:outline-none"
+            className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
             aria-label={showPassword ? 'Hide password' : 'Show password'}
           >
-            {showPassword ? <FaIcon icon="fa-solid fa-eye-slash" size={18} /> : <FaIcon icon="fa-solid fa-eye" size={18} />}
+            <FaIcon icon={showPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'} size={16} />
           </button>
-        </div>
-        {errors.password ? (
-          <div className="flex items-start gap-1.5 mt-1.5 text-rose-400 text-xs font-medium">
-            <FaIcon icon="fa-solid fa-circle-exclamation" size={14} className="mt-0.5 flex-shrink-0" />
-            <span>{errors.password}</span>
-          </div>
-        ) : (
-          <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mt-1.5 pl-1">
-            Min 6 chars, 1 uppercase, 1 number
-          </p>
-        )}
+        </Field>
       </div>
 
-      {/* Confirm Password Input */}
       <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-          Confirm Password
-        </label>
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-            <FaIcon icon="fa-solid fa-lock" size={18} />
-          </div>
+        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Confirm password</label>
+        <Field icon="fa-solid fa-lock" error={errors.confirmPassword}>
           <input
-            type={showConfirmPassword ? 'text' : 'password'}
+            type={showPassword ? 'text' : 'password'}
             value={confirmPassword}
             onChange={(e) => {
               setConfirmPassword(e.target.value);
-              if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: undefined });
+              clear('confirmPassword');
             }}
             disabled={loading}
-            className={`w-full pl-10 pr-10 py-2.5 bg-slate-900/60 border ${
-              errors.confirmPassword ? 'border-rose-500/80 focus:ring-rose-500/20' : 'border-slate-800 focus:border-emerald-500 focus:ring-emerald-500/10'
-            } rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-4 transition-all duration-200`}
-            placeholder="••••••••"
+            className={`${inputBase} ${errors.confirmPassword ? errRing : okRing}`}
+            placeholder="Re-enter password"
           />
-          <button
-            type="button"
-            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-350 transition-colors focus:outline-none"
-            aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-          >
-            {showConfirmPassword ? <FaIcon icon="fa-solid fa-eye-slash" size={18} /> : <FaIcon icon="fa-solid fa-eye" size={18} />}
-          </button>
-        </div>
-        {errors.confirmPassword && (
-          <div className="flex items-center gap-1.5 mt-1.5 text-rose-400 text-xs font-medium">
-            <FaIcon icon="fa-solid fa-circle-exclamation" size={14} />
-            <span>{errors.confirmPassword}</span>
-          </div>
-        )}
+        </Field>
       </div>
 
-      {/* Submit Button */}
       <button
         type="submit"
         disabled={loading}
-        className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold rounded-xl hover:from-emerald-600 hover:to-teal-600 shadow-md shadow-emerald-500/10 hover:shadow-lg hover:shadow-emerald-500/20 active:translate-y-0.5 active:shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-slate-950 transition-all duration-150 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 cursor-pointer mt-4"
+        className="w-full py-3 bg-blue-800 hover:bg-blue-900 text-white font-semibold rounded-xl shadow-md shadow-blue-800/20 hover:shadow-lg active:translate-y-0.5 transition-all duration-200 disabled:opacity-60 disabled:pointer-events-none flex items-center justify-center gap-2 cursor-pointer mt-1"
       >
         {loading ? (
           <>
-            <FaIcon icon="fa-solid fa-spinner" size={18} className="animate-spin" />
-            <span>Creating workspace...</span>
+            <FaIcon icon="fa-solid fa-spinner" size={16} className="animate-spin" />
+            <span>Creating account...</span>
           </>
         ) : (
-          'Get Started'
+          'Create account'
         )}
       </button>
     </form>

@@ -42,7 +42,7 @@ export const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({
         {/* Header */}
         <div className="p-6 border-b border-gray-150 flex justify-between items-center bg-gray-50">
           <h2 className="text-xl font-bold text-gray-800 flex items-center space-x-2">
-            <FaIcon icon="fa-solid fa-box" className="text-green-500" size={20} />
+            <FaIcon icon="fa-solid fa-box" className="text-blue-500" size={20} />
             <span>Product Details</span>
           </h2>
           <button 
@@ -82,15 +82,15 @@ export const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({
               </h3>
             </div>
 
-            <div className="flex items-center space-x-3 bg-green-50 p-4 rounded-xl border border-green-100/50">
-              <div className="p-2.5 bg-green-500 rounded-lg text-white">
+            <div className="flex items-center space-x-3 bg-blue-50 p-4 rounded-xl border border-blue-100/50">
+              <div className="p-2.5 bg-blue-500 rounded-lg text-white">
                 <FaIcon icon="fa-solid fa-indian-rupee-sign" size={20} />
               </div>
               <div>
-                <span className="text-xs font-semibold text-green-700/80 uppercase">
+                <span className="text-xs font-semibold text-blue-700/80 uppercase">
                   Price
                 </span>
-                <p className="text-2xl font-black text-green-700">
+                <p className="text-2xl font-black text-blue-700">
                   ₹{product.price.toFixed(2)}
                 </p>
               </div>

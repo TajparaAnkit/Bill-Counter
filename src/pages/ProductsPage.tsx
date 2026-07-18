@@ -5,6 +5,7 @@ import { ProductTable } from '../components/Products/ProductTable';
 import { ProductFormModal } from '../components/Products/ProductFormModal';
 import { ProductDetailSidebar } from '../components/Products/ProductDetailSidebar';
 import { BulkImportModal } from '../components/Products/BulkImportModal';
+import { useConfirm } from '../components/ui/confirm';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { 
@@ -19,7 +20,8 @@ import { Product } from '../types';
 export const ProductsPage: React.FC = () => {
   const { user } = useAuth();
   const toast = useToast();
-  
+  const confirm = useConfirm();
+
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -80,7 +82,13 @@ export const ProductsPage: React.FC = () => {
   };
 
   const handleDeleteProduct = async (product: Product) => {
-    if (!confirm(`Are you sure you want to delete "${product.name}"?`)) return;
+    const ok = await confirm({
+      title: 'Delete Product',
+      message: `Are you sure you want to permanently delete "${product.name}"? This action cannot be undone.`,
+      confirmText: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
     try {
       await deleteProduct(product.id);
       toast.success('Product deleted successfully');
@@ -93,7 +101,7 @@ export const ProductsPage: React.FC = () => {
     }
   };
 
-  const handleBulkImport = async (items: { name: string; price: number }[]) => {
+  const handleBulkImport = async (items: { name: string; price: number; imageUrl?: string }[]) => {
     if (!user) return;
     try {
       await bulkImportProducts(user.uid, items);
@@ -110,7 +118,7 @@ export const ProductsPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-slate-100 pb-5">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-slate-800 font-display">Products</h1>
-            <p className="text-slate-500 mt-1 text-sm font-medium">Manage your craft products and inventory pricing</p>
+            <p className="text-slate-500 mt-1 text-sm font-medium">Manage your products and inventory pricing</p>
           </div>
           <div className="flex items-center space-x-3.5">
             <button 
@@ -135,7 +143,7 @@ export const ProductsPage: React.FC = () => {
 
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <FaIcon icon="fa-solid fa-spinner" className="animate-spin text-green-500" size={40} />
+            <FaIcon icon="fa-solid fa-spinner" className="animate-spin text-blue-500" size={40} />
             <p className="text-gray-500 font-medium">Loading inventory...</p>
           </div>
         ) : (

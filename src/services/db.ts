@@ -15,7 +15,26 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './firebase';
-import { Product, Bill, UserProfile } from '../types';
+import { Product, Bill, UserProfile, Customer, PaymentStatus, PaymentMethod } from '../types';
+
+/**
+ * Uploads an image to Firebase Storage under the signed-in user's folder and
+ * returns its public download URL. Path: users/{userId}/products/{timestamp}-{name}
+ */
+export const uploadImageToStorage = async (userId: string, file: File): Promise<string> => {
+  // Keep the filename filesystem-safe and unique so uploads never collide.
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path = `users/${userId}/products/${Date.now()}-${safeName}`;
+  const storageRef = ref(storage, path);
+
+  try {
+    await uploadBytes(storageRef, file);
+    return await getDownloadURL(storageRef);
+  } catch (error) {
+    console.error('Firebase Storage upload error:', error);
+    throw new Error('Failed to upload image to Firebase Storage');
+  }
+};
 
 // ==========================================
 // BUSINESS PROFILE SETTINGS
@@ -79,12 +98,10 @@ export const addProduct = async (
 
   if (imageFile) {
     try {
-      const storageRef = ref(storage, `products/${userId}/${productId}`);
-      const snapshot = await uploadBytes(storageRef, imageFile);
-      imageUrl = await getDownloadURL(snapshot.ref);
+      imageUrl = await uploadImageToStorage(userId, imageFile);
     } catch (err) {
       console.error('Failed to upload image to Firebase Storage, saving without image:', err);
-      // Fallback: we could read as base64 or just leave empty
+      // Fallback: save without image
     }
   }
 
@@ -114,11 +131,10 @@ export const updateProduct = async (
 
   if (newImageFile) {
     try {
-      const storageRef = ref(storage, `products/${userId}/${productId}`);
-      const snapshot = await uploadBytes(storageRef, newImageFile);
-      updatedImageUrl = await getDownloadURL(snapshot.ref);
+      updatedImageUrl = await uploadImageToStorage(userId, newImageFile);
     } catch (err) {
-      console.error('Failed to upload new image:', err);
+      console.error('Failed to upload new image to Firebase Storage:', err);
+      // Keep existing image URL on error
     }
   }
 
@@ -179,7 +195,11 @@ export const getBills = async (userId: string): Promise<Bill[]> => {
   }
 };
 
-export const getNextBillNumber = async (userId: string): Promise<{ billNo: string; billSeqNum: number }> => {
+export const getNextBillNumber = async (
+  userId: string,
+  prefix = 'INV'
+): Promise<{ billNo: string; billSeqNum: number }> => {
+  const safePrefix = (prefix || 'INV').trim() || 'INV';
   try {
     const q = query(
       collection(db, 'bills'),
@@ -196,13 +216,13 @@ export const getNextBillNumber = async (userId: string): Promise<{ billNo: strin
     }
 
     const nextSeqNum = lastSeqNum + 1;
-    // Format: NC-0001, NC-0002, etc.
-    const billNo = `NC-${String(nextSeqNum).padStart(4, '0')}`;
+    // Format: INV-0001, INV-0002, etc. (prefix configurable in Settings)
+    const billNo = `${safePrefix}-${String(nextSeqNum).padStart(4, '0')}`;
     return { billNo, billSeqNum: nextSeqNum };
   } catch (error) {
     console.error('Error calculating next bill number:', error);
     const fallbackSeq = Date.now();
-    return { billNo: `NC-${fallbackSeq}`, billSeqNum: fallbackSeq };
+    return { billNo: `${safePrefix}-${fallbackSeq}`, billSeqNum: fallbackSeq };
   }
 };
 
@@ -218,6 +238,94 @@ export const addBill = async (
     createdAt: serverTimestamp()
   };
 
-  await setDoc(billRef, finalBill);
+  // Firestore rejects `undefined` field values — strip them before writing.
+  const sanitized: Record<string, any> = {};
+  Object.entries(finalBill).forEach(([k, v]) => {
+    if (v !== undefined) sanitized[k] = v;
+  });
+
+  await setDoc(billRef, sanitized);
   return { ...finalBill, createdAt: new Date() };
+};
+
+export const deleteBill = async (billId: string): Promise<void> => {
+  const billRef = doc(db, 'bills', billId);
+  await deleteDoc(billRef);
+};
+
+export const updateBillPayment = async (
+  billId: string,
+  payment: {
+    paymentStatus: PaymentStatus;
+    amountPaid: number;
+    paymentMethod?: PaymentMethod;
+  }
+): Promise<void> => {
+  const billRef = doc(db, 'bills', billId);
+  await updateDoc(billRef, {
+    paymentStatus: payment.paymentStatus,
+    amountPaid: payment.amountPaid,
+    paymentMethod: payment.paymentMethod || null,
+    paidAt: payment.paymentStatus === 'paid' ? serverTimestamp() : null,
+    updatedAt: serverTimestamp(),
+  });
+};
+
+// ==========================================
+// CUSTOMERS CRUD
+// ==========================================
+
+export const getCustomers = async (userId: string): Promise<Customer[]> => {
+  try {
+    // Filter by userId only (uses the automatic single-field index), then sort
+    // by name client-side. This avoids needing a composite Firestore index.
+    const q = query(collection(db, 'customers'), where('userId', '==', userId));
+    const querySnapshot = await getDocs(q);
+    const customers: Customer[] = [];
+    querySnapshot.forEach((docSnap) => {
+      customers.push({ id: docSnap.id, ...docSnap.data() } as Customer);
+    });
+    customers.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    return customers;
+  } catch (error) {
+    console.error('Error getting customers:', error);
+    throw error;
+  }
+};
+
+export const addCustomer = async (
+  userId: string,
+  data: { name: string; phone?: string; email?: string; address?: string }
+): Promise<Customer> => {
+  const customerRef = doc(collection(db, 'customers'));
+  const customerData = {
+    id: customerRef.id,
+    userId,
+    name: data.name,
+    phone: data.phone || '',
+    email: data.email || '',
+    address: data.address || '',
+    createdAt: serverTimestamp(),
+  };
+  await setDoc(customerRef, customerData);
+  return { ...customerData, createdAt: new Date() };
+};
+
+export const updateCustomer = async (
+  customerId: string,
+  data: { name: string; phone?: string; email?: string; address?: string }
+): Promise<void> => {
+  const customerRef = doc(db, 'customers', customerId);
+  await updateDoc(customerRef, {
+    name: data.name,
+    phone: data.phone || '',
+    email: data.email || '',
+    address: data.address || '',
+    updatedAt: serverTimestamp(),
+  });
+};
+
+export const deleteCustomer = async (customerId: string): Promise<void> => {
+  const customerRef = doc(db, 'customers', customerId);
+  await deleteDoc(customerRef);
 };
