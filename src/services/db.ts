@@ -130,7 +130,7 @@ export const addProduct = async (
 };
 
 export const updateProduct = async (
-  userId: string,
+  _userId: string,
   productId: string,
   name: string,
   price: number,
