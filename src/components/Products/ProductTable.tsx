@@ -9,6 +9,7 @@ interface ProductTableProps {
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
   onBulkDelete: (products: Product[]) => void;
+  onPromote: (product: Product) => void;
 }
 
 export const ProductTable: React.FC<ProductTableProps> = ({
@@ -17,6 +18,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
   onEdit,
   onDelete,
   onBulkDelete,
+  onPromote,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
@@ -177,6 +179,13 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                       </td>
                       <td className="p-4">
                         <div className="flex justify-center items-center space-x-2">
+                          <button
+                            onClick={() => onPromote(p)}
+                            className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                            title="Promote (Instagram/WhatsApp)"
+                          >
+                            <FaIcon icon="fa-solid fa-bullhorn" size={17} />
+                          </button>
                           <button
                             onClick={() => onView(p)}
                             className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"

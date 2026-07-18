@@ -46,6 +46,31 @@ export interface UpiQrParams {
   note?: string; // e.g. invoice number
 }
 
+// Renders ANY text/URL into a scannable QR PNG data URL. Used for the UPI QR
+// and for the shareable catalog link QR. Returns null on failure.
+export const generateQrDataUrl = async (text: string, size = 240): Promise<string | null> => {
+  if (!text?.trim()) return null;
+  try {
+    const QRCode = await loadQrLib();
+    const holder = document.createElement('div');
+    // eslint-disable-next-line no-new
+    new QRCode(holder, {
+      text,
+      width: size,
+      height: size,
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+    const canvas = holder.querySelector('canvas');
+    if (canvas) return (canvas as HTMLCanvasElement).toDataURL('image/png');
+    const img = holder.querySelector('img') as HTMLImageElement | null;
+    if (img?.src) return img.src;
+    return null;
+  } catch (err) {
+    console.error('Failed to generate QR:', err);
+    return null;
+  }
+};
+
 export const buildUpiUri = ({ upiId, payeeName, amount, note }: UpiQrParams): string => {
   const params = new URLSearchParams({
     pa: upiId,

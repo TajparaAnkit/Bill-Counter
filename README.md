@@ -14,8 +14,11 @@ A modern, scalable SaaS application for managing small business inventory and bi
 - ✅ **Payment Tracking** (Paid / Partial / Unpaid + method: cash, UPI, card, bank)
 - ✅ Bill Detail View + PDF Export (vector, print-ready A4)
 - ✅ **UPI Scan-to-Pay QR** on Invoices (generated from your UPI ID)
+- ✅ **Shareable public Storefront Catalog** (mobile-friendly link, "Order on WhatsApp")
+- ✅ **Promote Product** — auto-generated Instagram-square marketing image + caption/hashtags to share on WhatsApp/Instagram
 - ✅ Sales Dashboard with Metrics
 - ✅ Business Profile / Settings (invoice prefix, notes, tax, UPI)
+- ✅ Fixed brand name on invoices (single source of truth)
 - ✅ **In-app Knowledge Base** (feature docs & help)
 - ✅ Real-time Data Sync with Firestore
 - ✅ Responsive Design (Mobile-Friendly)
@@ -96,26 +99,39 @@ In your Firebase Console:
 
 **Firestore Security Rules:**
 
-This app stores products and bills in **flat top-level collections**, each document carrying a `userId` field (queries filter with `where('userId', '==', uid)`). Use rules that scope access by that field:
+This app stores data in **flat top-level collections**, each document carrying a `userId` field (queries filter with `where('userId', '==', uid)`). Use the rules below (also in [`firestore.rules`](firestore.rules)) — note that **products are publicly readable** to power the shareable catalog, and a separate `publicProfiles` collection exposes only public-safe shop info:
 
 ```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // User profile documents - only accessible by the owner
+    // User profile — private, owner only (holds email etc.)
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Products - owner-scoped via the userId field
+    // Public storefront profile — anyone can read (shareable catalog); owner writes only
+    match /publicProfiles/{userId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Products — PUBLICLY READABLE (powers the catalog); create/update/delete owner-only
     match /products/{productId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // Bills — owner-scoped via the userId field
+    match /bills/{billId} {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
-    // Bills - owner-scoped via the userId field
-    match /bills/{billId} {
+    // Customers — owner-scoped via the userId field
+    match /customers/{customerId} {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
@@ -123,6 +139,10 @@ service cloud.firestore {
   }
 }
 ```
+
+> **Privacy note:** only product listings (name, price, image) and public shop info
+> (name, phone, UPI) are exposed via the catalog. Bills, customers, and your email
+> stay private.
 
 > **Note:** Product images are **not** stored in Firebase Storage. Firebase now
 > requires the paid Blaze plan to use Cloud Storage, so this app uses **Cloudinary**
@@ -165,10 +185,13 @@ Bill-Counter/
 │   │   │   ├── RegisterForm.tsx
 │   │   │   └── ProtectedRoute.tsx
 │   │   ├── Products/
-│   │   │   ├── ProductTable.tsx
+│   │   │   ├── ProductTable.tsx           # table + bulk-delete + promote actions
 │   │   │   ├── ProductFormModal.tsx
 │   │   │   ├── ProductDetailSidebar.tsx   # slide-out product detail panel (portal)
+│   │   │   ├── PromoteModal.tsx           # marketing image + caption/hashtags share
 │   │   │   └── BulkImportModal.tsx        # Excel/CSV import + Cloudinary images
+│   │   ├── Customers/
+│   │   │   └── CustomerFormModal.tsx
 │   │   ├── Bills/
 │   │   │   ├── BillForm.tsx
 │   │   │   └── BillDetailModal.tsx        # invoice preview + PDF download (portal-based)
@@ -180,17 +203,25 @@ Bill-Counter/
 │   │   │   ├── ToastContainer.tsx
 │   │   │   └── ErrorBoundary.tsx
 │   │   └── ui/
-│   │       └── dropdown-menu.tsx          # shadcn/ui dropdown (Radix-based)
+│   │       ├── dropdown-menu.tsx          # shadcn/ui dropdown (Radix-based)
+│   │       ├── Pagination.tsx
+│   │       └── confirm.tsx                # confirm/prompt dialog provider
 │   ├── pages/
 │   │   ├── LoginPage.tsx
 │   │   ├── RegisterPage.tsx
 │   │   ├── DashboardPage.tsx
 │   │   ├── ProductsPage.tsx
+│   │   ├── CustomersPage.tsx
 │   │   ├── BillsPage.tsx
-│   │   └── SettingsPage.tsx
+│   │   ├── SettingsPage.tsx
+│   │   ├── KnowledgeBasePage.tsx          # in-app feature docs
+│   │   └── CatalogPage.tsx                # PUBLIC shareable storefront (no auth)
+│   ├── config/
+│   │   ├── brand.ts                       # BRAND_NAME (invoice branding)
+│   │   └── catalogThemes.ts               # storefront theme(s)
 │   ├── services/
 │   │   ├── firebase.ts          # Firebase config & init
-│   │   └── db.ts                # Firestore data access (products, bills, profile)
+│   │   └── db.ts                # Firestore access (products, bills, customers, profile, catalog)
 │   ├── store/
 │   │   ├── auth.ts              # Zustand auth store
 │   │   └── toast.ts             # Zustand toast store
@@ -201,7 +232,10 @@ Bill-Counter/
 │   │   └── index.ts             # TypeScript interfaces
 │   ├── utils/
 │   │   ├── validators.ts        # email/password validation + Firebase error mapping
-│   │   └── pdf.ts               # jsPDF-based invoice export
+│   │   ├── pdf.ts               # jsPDF-based invoice export
+│   │   ├── upiQr.ts             # UPI scan-to-pay QR generator
+│   │   ├── payment.ts           # payment status helpers
+│   │   └── promoImage.ts        # canvas marketing-image + caption generator
 │   ├── assets/
 │   │   └── qr.ts                # invoice QR / barcode image (swappable sample)
 │   ├── lib/
@@ -244,11 +278,13 @@ npm run preview
 1. **Register:** Go to `/register`, create an account with email & business name (or Google Sign-In)
 2. **Login:** Use those credentials to log in
 3. **Products:** Add products individually, **bulk import** from a spreadsheet, or **bulk delete** with row checkboxes
-4. **Customers:** Build a customer directory to reuse on invoices
-5. **Bills:** Create an invoice with line items, discount & tax, track payment, then export to PDF
-6. **Dashboard:** Review sales metrics
-7. **Settings:** Update your business profile (name, address, phone, UPI ID, invoice prefix, tax, notes)
-8. **Knowledge Base:** In-app help explaining every feature
+4. **Promote:** Click the 📣 icon on a product to generate a marketing image + caption to share
+5. **Share Catalog:** Click **Share Catalog** to copy your public storefront link
+6. **Customers:** Build a customer directory to reuse on invoices
+7. **Bills:** Create an invoice with line items, discount & tax, track payment, then export to PDF
+8. **Dashboard:** Review sales metrics
+9. **Settings:** Update your business profile (name, address, phone, UPI ID, invoice prefix, tax, notes)
+10. **Knowledge Base:** In-app help explaining every feature
 
 > **Navigation:** All pages (Dashboard, Products, Customers, Bills, Knowledge Base, Settings) and Logout live in the **user menu** — the avatar dropdown at the top-right of the header.
 
@@ -269,10 +305,50 @@ From the **Products** page → **Import**:
    (falls back to matching the product name if there's no image column).
 3. **Upload the `.xlsx` / `.csv`** — products are created with images attached where matched.
 
+### 🛍️ Shareable Storefront Catalog
+
+A public, mobile-friendly catalog that sellers can share on Instagram/WhatsApp:
+
+1. On the **Products** page, click **Share Catalog** → the public link is copied
+   (`.../#/catalog/<userId>`).
+2. Anyone can open it (no login) and see the shop's products with images/prices.
+3. Each product has an **"Order on WhatsApp"** button that opens WhatsApp with a
+   pre-filled message. The button appears when the seller's **Phone** (WhatsApp
+   number) is set in **Settings**.
+4. The catalog uses a fixed default theme; the seller's shop name comes from
+   **Settings → Business Name**. Public data is mirrored to `publicProfiles`
+   whenever Settings are saved.
+
+> Requires the **public** Firestore rules above to be published, and the seller
+> to save **Settings** once (to create their `publicProfiles` doc).
+
+### 📣 Promote Product (Marketing)
+
+Click the **📣 megaphone** icon on any product to open the Promote dialog:
+
+- Auto-generates a **1080×1080 Instagram-square image** (product photo + shop name +
+  price badge) on a canvas — see [`src/utils/promoImage.ts`](src/utils/promoImage.ts).
+- Auto-writes a **caption + hashtags** (editable).
+- **Share** (mobile only — opens the native share sheet to Instagram/WhatsApp with
+  the image), **Download image**, **Copy caption**, and **WhatsApp** (text).
+
+> Instagram/WhatsApp don't allow web apps to attach an image *and* caption in one
+> action, and desktop browsers can't push images to those apps — so the Share
+> button only appears on devices that support image sharing (mobile). On desktop,
+> use Download + Copy and post manually.
+
 ## 🎨 Customization
 
 ### App Name / Branding
-The app name (**Bill Counter**) appears in the header, login/register pages, and browser tab. To rename, update the text in `src/components/shared/Header.tsx`, `src/pages/LoginPage.tsx`, `src/pages/RegisterPage.tsx`, and the `<title>` in `index.html`. The business name shown on invoices comes from **Settings** (per user), and falls back to `'Bill Counter'` in `src/components/Bills/BillDetailModal.tsx` and `src/utils/pdf.ts`.
+The app name (**Bill Counter**) appears in the header, login/register pages, and browser tab. To rename, update the text in `src/components/shared/Header.tsx`, `src/pages/LoginPage.tsx`, `src/pages/RegisterPage.tsx`, and the `<title>` in `index.html`.
+
+**Invoice brand name** is a single fixed value in [`src/config/brand.ts`](src/config/brand.ts):
+
+```ts
+export const BRAND_NAME = 'Bill Counter';
+```
+
+Every invoice (on-screen and PDF — header, UPI payee, footer) uses `BRAND_NAME`. Change this one line to rebrand all invoices. (The seller's other details — address, phone, UPI — still come from **Settings** per user.)
 
 ### Invoice QR / Barcode
 Invoices show a QR/barcode driven by a single constant in [`src/assets/qr.ts`](src/assets/qr.ts). It ships with a generated placeholder — replace `INVOICE_QR` with your own image to use it everywhere (both the on-screen invoice and the PDF):
@@ -301,6 +377,13 @@ users/{userId}
 ├── defaultTaxRate: number (optional) # default GST %, e.g. 18
 ├── gstin: string (optional)
 └── createdAt: timestamp
+
+publicProfiles/{userId}                # public-safe mirror for the shareable catalog
+├── userId: string
+├── businessName: string
+├── phone: string (optional)           # used for "Order on WhatsApp"
+├── upiId: string (optional)
+└── updatedAt: timestamp
 
 products/{productId}
 ├── userId: string

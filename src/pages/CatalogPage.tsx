@@ -4,6 +4,7 @@ import { FaIcon } from '../components/shared/FaIcon';
 import { getPublicCatalog } from '../services/db';
 import { Product, PublicProfile } from '../types';
 import { BRAND_NAME } from '../config/brand';
+import { getCatalogTheme } from '../config/catalogThemes';
 
 // Build a wa.me link. Indian 10-digit numbers get the 91 country code.
 const whatsappLink = (phone: string, text: string): string => {
@@ -39,6 +40,7 @@ export const CatalogPage: React.FC = () => {
   const shopName = profile?.businessName || 'Our Shop';
   const phone = profile?.phone || '';
   const hasWhatsApp = phone.replace(/\D/g, '').length >= 10;
+  const theme = getCatalogTheme(); // fixed default theme (not user-configurable)
 
   const filtered = products.filter((p) =>
     p.name.toLowerCase().includes(search.trim().toLowerCase())
@@ -73,23 +75,38 @@ export const CatalogPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Shop header */}
-      <header className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white">
-        <div className="max-w-5xl mx-auto px-5 py-8">
-          <div className="flex items-center gap-4">
-            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white/15 text-2xl font-black backdrop-blur">
-              {shopName.charAt(0).toUpperCase()}
+      {/* Shop header — boutique-style hero */}
+      <header className={`relative overflow-hidden ${theme.header} ${theme.headerText}`}>
+        {/* Decorative glows */}
+        <div className="pointer-events-none absolute -top-24 -left-16 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+        <div className={`pointer-events-none absolute -bottom-28 -right-12 h-72 w-72 rounded-full ${theme.glow} blur-3xl`} />
+
+        <div className="relative max-w-5xl mx-auto px-5 pt-12 pb-16 text-center">
+          {/* Avatar */}
+          <span className={`mx-auto grid h-20 w-20 place-items-center rounded-3xl ${theme.avatar} backdrop-blur text-3xl font-black shadow-lg`}>
+            {shopName.charAt(0).toUpperCase()}
+          </span>
+
+          <h1 className="mt-4 text-3xl sm:text-4xl font-extrabold tracking-tight font-display">
+            {shopName}
+          </h1>
+          <p className={`mt-2 ${theme.subText} text-sm sm:text-base`}>
+            {profile?.tagline || '✨ Handmade with love'}
+          </p>
+
+          {/* Trust badges */}
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
+            <span className={`inline-flex items-center gap-1.5 rounded-full ${theme.chip} px-3.5 py-1.5 text-xs font-semibold backdrop-blur`}>
+              <FaIcon icon="fa-solid fa-box-open" size={12} /> {products.length} Products
             </span>
-            <div className="min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight truncate">{shopName}</h1>
-              {profile?.tagline ? (
-                <p className="text-blue-100 text-sm mt-0.5">{profile.tagline}</p>
-              ) : (
-                <p className="text-blue-100 text-sm mt-0.5">
-                  {products.length} product{products.length !== 1 ? 's' : ''} available
-                </p>
-              )}
-            </div>
+            <span className={`inline-flex items-center gap-1.5 rounded-full ${theme.chip} px-3.5 py-1.5 text-xs font-semibold backdrop-blur`}>
+              <FaIcon icon="fa-solid fa-hand-holding-heart" size={12} /> Handmade
+            </span>
+            {hasWhatsApp && (
+              <span className={`inline-flex items-center gap-1.5 rounded-full ${theme.chip} px-3.5 py-1.5 text-xs font-semibold backdrop-blur`}>
+                <FaIcon icon="fa-solid fa-bolt" size={12} /> Quick Replies
+              </span>
+            )}
           </div>
 
           {hasWhatsApp && (
@@ -97,17 +114,20 @@ export const CatalogPage: React.FC = () => {
               href={whatsappLink(phone, generalMessage)}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-green-500 hover:bg-green-600 px-4 py-2.5 text-sm font-semibold shadow-sm transition-colors"
+              className="mt-7 inline-flex items-center gap-2 rounded-full bg-green-500 hover:bg-green-600 px-6 py-3 text-sm font-bold shadow-lg shadow-green-900/20 transition-all hover:-translate-y-0.5"
             >
               <FaIcon icon="fa-brands fa-whatsapp" size={18} />
               Chat with us on WhatsApp
             </a>
           )}
         </div>
+
+        {/* Curved bottom that flows into the page */}
+        <div className="relative h-8 bg-slate-50 rounded-t-[2.5rem]" />
       </header>
 
-      {/* Search */}
-      <div className="max-w-5xl mx-auto px-5 pt-6">
+      {/* Search — floats up onto the curve */}
+      <div className="max-w-5xl mx-auto px-5 -mt-2 relative z-10">
         <div className="relative">
           <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
             <FaIcon icon="fa-solid fa-magnifying-glass" size={16} className="text-slate-400" />
@@ -117,7 +137,7 @@ export const CatalogPage: React.FC = () => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search products…"
-            className="w-full pl-11 pr-4 py-3 rounded-xl bg-white border border-slate-200 shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={`w-full pl-11 pr-4 py-3 rounded-xl bg-white border border-slate-200 shadow-xs focus:outline-none focus:ring-2 ${theme.focusRing}`}
           />
         </div>
       </div>
@@ -144,7 +164,7 @@ export const CatalogPage: React.FC = () => {
                 </div>
                 <div className="p-3 flex flex-col flex-1">
                   <h3 className="font-semibold text-slate-800 text-sm leading-snug line-clamp-2">{p.name}</h3>
-                  <p className="text-blue-600 font-bold mt-1">₹{p.price.toFixed(2)}</p>
+                  <p className={`${theme.priceText} font-bold mt-1`}>₹{p.price.toFixed(2)}</p>
                   {hasWhatsApp && (
                     <a
                       href={whatsappLink(phone, orderMessage(p))}

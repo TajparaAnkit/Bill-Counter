@@ -5,6 +5,7 @@ import { ProductTable } from '../components/Products/ProductTable';
 import { ProductFormModal } from '../components/Products/ProductFormModal';
 import { ProductDetailSidebar } from '../components/Products/ProductDetailSidebar';
 import { BulkImportModal } from '../components/Products/BulkImportModal';
+import { PromoteModal } from '../components/Products/PromoteModal';
 import { useConfirm } from '../components/ui/confirm';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
@@ -31,6 +32,7 @@ export const ProductsPage: React.FC = () => {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [promoteProduct, setPromoteProduct] = useState<Product | null>(null);
 
   const loadProductsList = async () => {
     if (!user) return;
@@ -200,6 +202,7 @@ export const ProductsPage: React.FC = () => {
             }}
             onDelete={handleDeleteProduct}
             onBulkDelete={handleBulkDelete}
+            onPromote={(p) => setPromoteProduct(p)}
           />
         )}
       </div>
@@ -221,8 +224,14 @@ export const ProductsPage: React.FC = () => {
         onClose={() => setSelectedProduct(null)}
       />
 
+      {/* Promote / Marketing Modal */}
+      <PromoteModal
+        product={promoteProduct}
+        onClose={() => setPromoteProduct(null)}
+      />
+
       {/* Bulk Import Modal */}
-      <BulkImportModal 
+      <BulkImportModal
         isOpen={isImportOpen}
         onClose={() => setIsImportOpen(false)}
         onImport={handleBulkImport}
