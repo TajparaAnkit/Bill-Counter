@@ -3,8 +3,7 @@ import { createPortal } from 'react-dom';
 import * as XLSX from 'xlsx';
 import { FaIcon } from '../shared/FaIcon';
 import { useToast } from '../../hooks/useToast';
-import { useAuth } from '../../hooks/useAuth';
-import { uploadImageToStorage } from '../../services/db';
+import { uploadImageToCloudinary } from '../../services/db';
 
 interface ImportItem {
   name: string;
@@ -96,7 +95,6 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const toast = useToast();
-  const { user } = useAuth();
 
   if (!isOpen) return null;
 
@@ -108,7 +106,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
     }
   };
 
-  // Upload every picked image to Firebase Storage, keyed by lowercase filename.
+  // Upload every picked image to Cloudinary, keyed by lowercase filename.
   // Returns the URL map plus any upload failures so the caller can report them.
   const createImageUrlMap = async (
     imageFiles: File[]
@@ -120,12 +118,11 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
     for (const file of imageFiles) {
       try {
         toast.success(`Uploading image ${uploaded + 1}/${imageFiles.length}...`);
-        const url = await uploadImageToStorage(user!.uid, file);
+        const url = await uploadImageToCloudinary(file);
         urlMap[file.name.toLowerCase()] = url;
         uploaded++;
       } catch (err) {
-        // Surface the real Firebase reason (e.g. storage/unauthorized) — this is
-        // usually why "it's not working": Storage isn't enabled or rules block it.
+        // Surface the real reason so failures aren't silent.
         const code = (err as { code?: string })?.code || (err as Error)?.message || 'unknown error';
         console.error(`Failed to upload ${file.name}:`, err);
         toast.error(`Upload failed for "${file.name}" — ${code}`);
@@ -184,11 +181,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
 
       // If the user picked image files, upload them and match to products by name.
       if (selectedImages.length > 0) {
-        if (!user) {
-          toast.error('You must be logged in to upload images.');
-          return;
-        }
-        toast.success(`Uploading ${selectedImages.length} image(s) to Firebase Storage...`);
+        toast.success(`Uploading ${selectedImages.length} image(s) to Cloudinary...`);
         const { urlMap } = await createImageUrlMap(selectedImages);
 
         const unmatched: string[] = [];
@@ -252,7 +245,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
               <h3 className="font-semibold text-green-800 text-sm">Optional: Upload Product Images</h3>
             </div>
             <p className="text-xs text-green-700 mb-3">
-              Select the actual image files. They upload to Firebase Storage and are matched to products by the <span className="font-semibold">filename in your sheet's image column</span> (e.g. a row with <span className="font-mono bg-white px-1 py-0.5 rounded">C:\pics\tshirt.jpg</span> matches the picked file <span className="font-mono bg-white px-1 py-0.5 rounded">tshirt.jpg</span>). No image column? It falls back to matching the product name.
+              Select the actual image files. They upload to Cloudinary and are matched to products by the <span className="font-semibold">filename in your sheet's image column</span> (e.g. a row with <span className="font-mono bg-white px-1 py-0.5 rounded">C:\pics\tshirt.jpg</span> matches the picked file <span className="font-mono bg-white px-1 py-0.5 rounded">tshirt.jpg</span>). No image column? It falls back to matching the product name.
             </p>
             <label className="flex items-center gap-3 p-3 bg-white border-2 border-dashed border-green-300 rounded-lg cursor-pointer hover:border-green-500 hover:bg-green-50/50 transition-all">
               <FaIcon icon="fa-solid fa-images" size={20} className="text-green-600 shrink-0" />

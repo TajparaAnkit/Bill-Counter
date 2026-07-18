@@ -10,6 +10,7 @@ import { ProductsPage } from './pages/ProductsPage';
 import { CustomersPage } from './pages/CustomersPage';
 import { BillsPage } from './pages/BillsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { KnowledgeBasePage } from './pages/KnowledgeBasePage';
 
 function App() {
   return (
@@ -59,6 +60,14 @@ function App() {
           element={
             <ProtectedRoute>
               <SettingsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/knowledge-base"
+          element={
+            <ProtectedRoute>
+              <KnowledgeBasePage />
             </ProtectedRoute>
           }
         />

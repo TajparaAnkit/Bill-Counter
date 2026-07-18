@@ -9,11 +9,12 @@ import { useConfirm } from '../components/ui/confirm';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { 
-  getProducts, 
-  addProduct, 
-  updateProduct, 
-  deleteProduct, 
-  bulkImportProducts 
+  getProducts,
+  addProduct,
+  updateProduct,
+  deleteProduct,
+  bulkDeleteProducts,
+  bulkImportProducts
 } from '../services/db';
 import { Product } from '../types';
 
@@ -101,6 +102,27 @@ export const ProductsPage: React.FC = () => {
     }
   };
 
+  const handleBulkDelete = async (toDelete: Product[]) => {
+    const ok = await confirm({
+      title: `Delete ${toDelete.length} Product${toDelete.length > 1 ? 's' : ''}`,
+      message: `Are you sure you want to permanently delete ${toDelete.length} selected product${toDelete.length > 1 ? 's' : ''}? This action cannot be undone.`,
+      confirmText: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await bulkDeleteProducts(toDelete.map((p) => p.id));
+      toast.success(`Deleted ${toDelete.length} product${toDelete.length > 1 ? 's' : ''}`);
+      if (selectedProduct && toDelete.some((p) => p.id === selectedProduct.id)) {
+        setSelectedProduct(null);
+      }
+      loadProductsList();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete selected products');
+    }
+  };
+
   const handleBulkImport = async (items: { name: string; price: number; imageUrl?: string }[]) => {
     if (!user) return;
     try {
@@ -155,6 +177,7 @@ export const ProductsPage: React.FC = () => {
               setIsFormOpen(true);
             }}
             onDelete={handleDeleteProduct}
+            onBulkDelete={handleBulkDelete}
           />
         )}
       </div>
