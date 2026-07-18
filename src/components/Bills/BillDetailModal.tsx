@@ -8,6 +8,7 @@ import { generateUpiQrDataUrl } from '../../utils/upiQr';
 import { updateBillPayment } from '../../services/db';
 import { PAYMENT_META, getPaymentStatus, getAmountDue } from '../../utils/payment';
 import { PaymentStatus } from '../../types';
+import { BRAND_NAME } from '../../config/brand';
 import { usePrompt } from '../ui/confirm';
 import { useToast } from '../../hooks/useToast';
 
@@ -49,7 +50,7 @@ export const BillDetailModal: React.FC<BillDetailModalProps> = ({
     }
     generateUpiQrDataUrl({
       upiId,
-      payeeName: businessProfile?.businessName || 'Bill Counter',
+      payeeName: BRAND_NAME,
       amount: bill.total,
       note: bill.billNo,
     }).then((url) => {
@@ -294,7 +295,7 @@ export const BillDetailModal: React.FC<BillDetailModalProps> = ({
                   BC
                 </div>
                 <h3 className="font-bold text-gray-900 text-lg">
-                  {businessProfile?.businessName || 'Bill Counter'}
+                  {BRAND_NAME}
                 </h3>
                 {businessProfile?.address && (
                   <p className="text-xs text-gray-500 whitespace-pre-wrap max-w-xs ml-auto">
@@ -420,7 +421,7 @@ export const BillDetailModal: React.FC<BillDetailModalProps> = ({
 
             {/* Footer Thank You */}
             <div className="text-center pt-10 text-xs text-gray-400 font-medium">
-              Thank you for supporting {businessProfile?.businessName || 'Bill Counter'}! 🧶
+              Thank you for supporting {BRAND_NAME}! 🧶
             </div>
           </div>
         </div>

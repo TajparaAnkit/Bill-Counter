@@ -123,6 +123,20 @@ export const ProductsPage: React.FC = () => {
     }
   };
 
+  const handleShareCatalog = async () => {
+    if (!user) return;
+    // Full public URL, HashRouter-aware and base-path-aware for GitHub Pages.
+    const url = `${window.location.origin}${import.meta.env.BASE_URL}#/catalog/${user.uid}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Catalog link copied! Share it on WhatsApp/Instagram.');
+    } catch {
+      // Clipboard blocked (e.g. insecure context) — open it so they can copy manually.
+      window.open(url, '_blank');
+      toast.success('Catalog opened in a new tab.');
+    }
+  };
+
   const handleBulkImport = async (items: { name: string; price: number; imageUrl?: string }[]) => {
     if (!user) return;
     try {
@@ -143,7 +157,15 @@ export const ProductsPage: React.FC = () => {
             <p className="text-slate-500 mt-1 text-sm font-medium">Manage your products and inventory pricing</p>
           </div>
           <div className="flex items-center space-x-3.5">
-            <button 
+            <button
+              onClick={handleShareCatalog}
+              className="btn-secondary flex items-center space-x-2 py-2.5 px-4.5"
+              title="Copy your public catalog link"
+            >
+              <FaIcon icon="fa-solid fa-share-nodes" size={16} />
+              <span>Share Catalog</span>
+            </button>
+            <button
               onClick={() => setIsImportOpen(true)}
               className="btn-secondary flex items-center space-x-2 py-2.5 px-4.5"
             >
