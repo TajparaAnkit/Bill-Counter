@@ -14,7 +14,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Product, Bill, UserProfile, Customer, PaymentStatus, PaymentMethod } from '../types';
+import { Product, Bill, UserProfile, PublicProfile, Customer, PaymentStatus, PaymentMethod } from '../types';
 
 // Cloudinary config (free plan — no Firebase Blaze billing required).
 // Change these to your own Cloudinary cloud name + an UNSIGNED upload preset.
@@ -72,6 +72,32 @@ export const updateBusinessProfile = async (userId: string, data: Partial<UserPr
     uid: userId,
     updatedAt: serverTimestamp()
   }, { merge: true });
+
+  // Mirror only public-safe fields to the publicly readable catalog profile.
+  const publicData: Record<string, any> = { userId, updatedAt: serverTimestamp() };
+  if (data.businessName !== undefined) publicData.businessName = data.businessName;
+  if (data.phone !== undefined) publicData.phone = data.phone;
+  if (data.upiId !== undefined) publicData.upiId = data.upiId;
+  await setDoc(doc(db, 'publicProfiles', userId), publicData, { merge: true });
+};
+
+// Public storefront: anyone can read a seller's catalog (profile + products).
+export const getPublicCatalog = async (
+  userId: string
+): Promise<{ profile: PublicProfile | null; products: Product[] }> => {
+  const profileSnap = await getDoc(doc(db, 'publicProfiles', userId));
+  const profile = profileSnap.exists() ? (profileSnap.data() as PublicProfile) : null;
+
+  const q = query(
+    collection(db, 'products'),
+    where('userId', '==', userId),
+    orderBy('createdAt', 'desc')
+  );
+  const snap = await getDocs(q);
+  const products: Product[] = [];
+  snap.forEach((d) => products.push({ id: d.id, ...d.data() } as Product));
+
+  return { profile, products };
 };
 
 // ==========================================

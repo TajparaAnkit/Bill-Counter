@@ -3,14 +3,22 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Business profile: a user may only access their own profile document.
+    // Business profile: a user may only access their own (private) profile document.
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Products: readable/writable only by their owner (identified by userId field).
+    // Public storefront profile: anyone can read (for the shareable catalog),
+    // but only the owner can write it. Holds only public-safe fields.
+    match /publicProfiles/{userId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Products: PUBLICLY READABLE (powers the shareable catalog).
+    // Writes remain restricted to the owner.
     match /products/{productId} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read: if true;
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }

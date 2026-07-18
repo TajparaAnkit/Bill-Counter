@@ -51,6 +51,17 @@ export interface Customer {
   createdAt: any; // Firestore Timestamp or Date
 }
 
+// Public-safe subset of the profile, mirrored to the `publicProfiles` collection
+// and readable by anyone for the shareable storefront catalog.
+export interface PublicProfile {
+  userId: string;
+  businessName: string;
+  phone?: string;   // used for "Order on WhatsApp"
+  upiId?: string;   // optional, shown as a pay-to hint
+  tagline?: string; // optional short shop description
+  updatedAt?: any;
+}
+
 export interface UserProfile {
   uid: string;
   email: string;

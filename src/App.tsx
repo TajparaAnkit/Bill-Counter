@@ -11,6 +11,7 @@ import { CustomersPage } from './pages/CustomersPage';
 import { BillsPage } from './pages/BillsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { KnowledgeBasePage } from './pages/KnowledgeBasePage';
+import { CatalogPage } from './pages/CatalogPage';
 
 function App() {
   return (
@@ -21,6 +22,8 @@ function App() {
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        {/* Public shareable storefront — no auth required */}
+        <Route path="/catalog/:userId" element={<CatalogPage />} />
 
         {/* Protected Routes */}
         <Route
