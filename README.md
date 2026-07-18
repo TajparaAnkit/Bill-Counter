@@ -4,13 +4,19 @@ A modern, scalable SaaS application for managing small business inventory and bi
 
 ## 🚀 Features
 
-- ✅ User Authentication (Register/Login)
-- ✅ Product Management (Add, Edit, Delete, Bulk Import)
-- ✅ Invoice/Bill Creation with Line Items
+- ✅ User Authentication (Register / Login + **Google Sign-In**)
+- ✅ Product Management (Add, Edit, Delete, **Bulk Delete**)
+- ✅ **Bulk Import from Excel / CSV** with image upload (matched by filename)
+- ✅ Product image hosting via **Cloudinary** (no billing / Blaze plan needed)
+- ✅ Slide-out Product Detail panel (right-side drawer)
+- ✅ **Customer Directory** (add/edit, reuse on invoices)
+- ✅ Invoice/Bill Creation with Line Items, **Discount & Tax/GST**
+- ✅ **Payment Tracking** (Paid / Partial / Unpaid + method: cash, UPI, card, bank)
 - ✅ Bill Detail View + PDF Export (vector, print-ready A4)
-- ✅ QR / Barcode on Invoices (configurable, swappable image)
+- ✅ **UPI Scan-to-Pay QR** on Invoices (generated from your UPI ID)
 - ✅ Sales Dashboard with Metrics
-- ✅ Business Profile / Settings
+- ✅ Business Profile / Settings (invoice prefix, notes, tax, UPI)
+- ✅ **In-app Knowledge Base** (feature docs & help)
 - ✅ Real-time Data Sync with Firestore
 - ✅ Responsive Design (Mobile-Friendly)
 - ✅ Modal & Drawer-based Workflows
@@ -24,8 +30,10 @@ A modern, scalable SaaS application for managing small business inventory and bi
 | Frontend | React 19, Vite 8, TypeScript |
 | UI / Styling | Tailwind CSS v4, shadcn/ui (built on Radix UI primitives) |
 | State Management | Zustand |
-| Routing | React Router v7 |
-| Backend/DB | Firebase (Auth + Firestore + Storage) |
+| Routing | React Router v7 (`HashRouter` for GitHub Pages) |
+| Backend/DB | Firebase (Auth + Firestore) |
+| Image Hosting | Cloudinary (unsigned browser uploads) |
+| Spreadsheet Parsing | SheetJS (`xlsx`) for Excel/CSV import |
 | Icons | FontAwesome |
 | PDF Export | jsPDF + jspdf-autotable (loaded on demand from CDN) |
 
@@ -116,19 +124,28 @@ service cloud.firestore {
 }
 ```
 
-**Storage** (optional — only needed if you upload product images):
-- Go to Storage > Rules
-- Replace with:
-```javascript
-rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /users/{userId}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-  }
-}
+> **Note:** Product images are **not** stored in Firebase Storage. Firebase now
+> requires the paid Blaze plan to use Cloud Storage, so this app uses **Cloudinary**
+> (free tier) for image hosting instead — see the next section.
+
+### Image Hosting (Cloudinary)
+
+Product images (single add/edit and bulk import) are uploaded directly from the
+browser to Cloudinary using an **unsigned upload preset** — no server, no billing.
+
+1. Create a free account at [cloudinary.com](https://cloudinary.com/).
+2. Copy your **Cloud name** from the dashboard.
+3. Go to **Settings → Upload → Upload presets → Add upload preset**, set
+   **Signing Mode = Unsigned**, and note the preset name.
+4. Set both values in [`src/services/db.ts`](src/services/db.ts):
+
+```ts
+const CLOUDINARY_CLOUD_NAME = 'your_cloud_name';
+const CLOUDINARY_UPLOAD_PRESET = 'your_unsigned_preset';
 ```
+
+Cloudinary allows browser uploads from any origin, so this works on localhost and
+your live site with no CORS setup.
 
 ### 6. Start Development Server
 ```bash
@@ -150,8 +167,8 @@ Bill-Counter/
 │   │   ├── Products/
 │   │   │   ├── ProductTable.tsx
 │   │   │   ├── ProductFormModal.tsx
-│   │   │   ├── ProductDetailSidebar.tsx   # slide-out product detail panel
-│   │   │   └── BulkImportModal.tsx        # JSON / CSV import
+│   │   │   ├── ProductDetailSidebar.tsx   # slide-out product detail panel (portal)
+│   │   │   └── BulkImportModal.tsx        # Excel/CSV import + Cloudinary images
 │   │   ├── Bills/
 │   │   │   ├── BillForm.tsx
 │   │   │   └── BillDetailModal.tsx        # invoice preview + PDF download (portal-based)
@@ -224,14 +241,33 @@ npm run preview
 
 ## 📝 Testing the App
 
-1. **Register:** Go to `/register`, create an account with email & business name
+1. **Register:** Go to `/register`, create an account with email & business name (or Google Sign-In)
 2. **Login:** Use those credentials to log in
-3. **Products:** Add products individually or via bulk import
-4. **Bills:** Create an invoice with line items, then view it and export to PDF
-5. **Dashboard:** Review sales metrics
-6. **Settings:** Update your business profile (name, address, phone, invoice notes)
+3. **Products:** Add products individually, **bulk import** from a spreadsheet, or **bulk delete** with row checkboxes
+4. **Customers:** Build a customer directory to reuse on invoices
+5. **Bills:** Create an invoice with line items, discount & tax, track payment, then export to PDF
+6. **Dashboard:** Review sales metrics
+7. **Settings:** Update your business profile (name, address, phone, UPI ID, invoice prefix, tax, notes)
+8. **Knowledge Base:** In-app help explaining every feature
 
-> **Navigation:** All pages (Dashboard, Products, New Invoice, Settings) and Logout live in the **user menu** — the avatar dropdown at the top-right of the header.
+> **Navigation:** All pages (Dashboard, Products, Customers, Bills, Knowledge Base, Settings) and Logout live in the **user menu** — the avatar dropdown at the top-right of the header.
+
+### 📥 Bulk Import Products (Excel / CSV)
+
+From the **Products** page → **Import**:
+
+1. **Prepare a sheet** with columns `name`, `price`, and optionally `image`
+   (headers are flexible: `productname`/`title`, `amount`/`cost`, `imageurl`/`link`):
+   ```csv
+   name,price,image
+   T-Shirt,450,https://example.com/tshirt.jpg
+   Coffee Mug,299,
+   ```
+2. **Images on your computer:** a browser can't read local paths (`C:\pics\mug.jpg`).
+   Click **Upload Product Images**, select the actual files — they upload to Cloudinary
+   and are matched to products by the **filename in the sheet's image column**
+   (falls back to matching the product name if there's no image column).
+3. **Upload the `.xlsx` / `.csv`** — products are created with images attached where matched.
 
 ## 🎨 Customization
 
@@ -249,7 +285,7 @@ export const INVOICE_QR_CAPTION = 'Scan to pay / verify'; // set '' to hide
 
 ## 🔐 Firestore Collections Schema
 
-Collections are flat and top-level; each product/bill document stores its owner's `userId`.
+Collections are flat and top-level; each document stores its owner's `userId`.
 
 ```
 users/{userId}
@@ -259,13 +295,26 @@ users/{userId}
 ├── address: string (optional)
 ├── phone: string (optional)
 ├── invoiceNotes: string (optional)
+├── upiId: string (optional)          # powers the invoice scan-to-pay QR
+├── billPrefix: string (optional)     # e.g. "INV" -> INV-0001
+├── taxEnabled: boolean (optional)
+├── defaultTaxRate: number (optional) # default GST %, e.g. 18
+├── gstin: string (optional)
 └── createdAt: timestamp
 
 products/{productId}
 ├── userId: string
 ├── name: string
 ├── price: number
-├── imageUrl: string (optional)
+├── imageUrl: string (optional)       # Cloudinary URL
+└── createdAt: timestamp
+
+customers/{customerId}
+├── userId: string
+├── name: string
+├── phone: string (optional)
+├── email: string (optional)
+├── address: string (optional)
 └── createdAt: timestamp
 
 bills/{billId}
@@ -273,13 +322,25 @@ bills/{billId}
 ├── billNo: string
 ├── billSeqNum: number
 ├── customerName: string
+├── customerId: string (optional)
+├── customerPhone: string (optional)
 ├── items: array<{ productId?, productName, quantity, price, total }>
 ├── subtotal: number
-├── tax: number
+├── discount: number (optional)
+├── taxRate: number (optional)        # % applied
+├── tax: number                       # computed tax amount
 ├── total: number
+├── paymentStatus: 'paid' | 'partial' | 'unpaid'
+├── amountPaid: number
+├── paymentMethod: 'cash'|'upi'|'card'|'bank'|'other' (optional)
+├── paidAt: timestamp (optional)
 ├── createdAt: timestamp
 └── notes: string (optional)
 ```
+
+> The `customers` collection is queried by `userId` only (sorted client-side) to
+> avoid needing a composite index. Firestore rules should scope every collection
+> by the `userId` field, the same way `products` and `bills` are scoped above.
 
 ## 📚 Available Scripts
 
@@ -312,6 +373,32 @@ npm run dev -- --port 3000
 - Confirm each product/bill document has a `userId` field matching the signed-in user
 
 ## 🚢 Deployment
+
+### Deploy to GitHub Pages (current setup)
+
+This project is configured for GitHub Pages:
+- `vite.config.ts` sets `base: '/Bill-Counter/'` (the repo name)
+- The app uses `HashRouter` so deep links / refreshes don't 404
+- `gh-pages` handles publishing via `predeploy` + `deploy` scripts
+
+```bash
+# One-time: install the publisher (already a devDependency here)
+npm install --save-dev gh-pages
+
+# Build and publish to the gh-pages branch
+npm run deploy
+```
+
+Then, in the GitHub repo → **Settings → Pages** → Source: **Deploy from a branch** →
+Branch: **`gh-pages`** / `/ (root)`. The site goes live at
+`https://<username>.github.io/Bill-Counter/`.
+
+> **Also required for a working live site:**
+> - Firebase Console → **Authentication → Settings → Authorized domains** → add your
+>   Pages domain (e.g. `<username>.github.io`), or login will fail.
+> - `VITE_FIREBASE_*` values are baked in at **build time** — build locally with a
+>   valid `.env.local`, or add them as CI secrets if building via GitHub Actions.
+> - Cloudinary needs no setup for the live domain (unsigned uploads work anywhere).
 
 ### Deploy to Firebase Hosting
 

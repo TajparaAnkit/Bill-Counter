@@ -7,6 +7,36 @@
 @custom-variant dark (&:is(.dark *));
 
 @layer components {
+  /* Knowledge Base article content (list/code styles Tailwind's reset strips) */
+  .kb-article p {
+    @apply mb-3;
+  }
+  .kb-article ul,
+  .kb-article ol {
+    @apply mb-3 pl-5 space-y-1.5;
+  }
+  .kb-article ul {
+    @apply list-disc;
+  }
+  .kb-article ol {
+    @apply list-decimal;
+  }
+  .kb-article code {
+    @apply bg-slate-100 text-slate-700 rounded px-1.5 py-0.5 text-[0.8125rem] font-mono;
+  }
+  .kb-article pre {
+    @apply bg-slate-900 text-slate-100 rounded-lg p-3 my-3 text-xs font-mono overflow-x-auto whitespace-pre;
+  }
+  .kb-article pre code {
+    @apply bg-transparent text-inherit p-0;
+  }
+  .kb-article .tip {
+    @apply bg-blue-50 text-blue-800 rounded-lg px-3 py-2 text-[0.8125rem] mt-3 mb-0;
+  }
+  .kb-article a {
+    @apply text-blue-600 underline;
+  }
+
   .trading-card {
     @apply bg-white/95 border border-slate-200 rounded-xl shadow-sm transition-all duration-300 ease-out;
     min-height: 64px;
