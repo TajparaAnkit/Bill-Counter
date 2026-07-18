@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+// HashRouter avoids GitHub Pages 404s on refresh/deep-links (URLs use /#/...)
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './components/Auth/ProtectedRoute';
 import { ConfirmProvider } from './components/ui/confirm';
 import { ToastContainer } from './components/shared/ToastContainer';
@@ -12,7 +13,7 @@ import { SettingsPage } from './pages/SettingsPage';
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <ConfirmProvider>
       <ToastContainer />
       <Routes>
@@ -66,7 +67,7 @@ function App() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>
       </ConfirmProvider>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
