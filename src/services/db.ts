@@ -78,6 +78,8 @@ export const updateBusinessProfile = async (userId: string, data: Partial<UserPr
   if (data.businessName !== undefined) publicData.businessName = data.businessName;
   if (data.phone !== undefined) publicData.phone = data.phone;
   if (data.upiId !== undefined) publicData.upiId = data.upiId;
+  if (data.tagline !== undefined) publicData.tagline = data.tagline;
+  if (data.catalogTheme !== undefined) publicData.catalogTheme = data.catalogTheme;
   await setDoc(doc(db, 'publicProfiles', userId), publicData, { merge: true });
 };
 

@@ -97,6 +97,45 @@ Water Bottle,199,`}</pre>
     ),
   },
   {
+    id: 'catalog',
+    category: 'Marketing & Sharing',
+    icon: 'fa-solid fa-store',
+    title: 'Your shareable storefront catalog',
+    summary: 'Share a public product catalog link on Instagram/WhatsApp.',
+    keywords: 'catalog storefront share link public whatsapp instagram order shop',
+    body: (
+      <>
+        <p>Turn your products into a public, mobile-friendly shop page you can share anywhere.</p>
+        <ul>
+          <li>On the <strong>Products</strong> page, click <strong>Share Catalog</strong> — your public link is copied.</li>
+          <li>Paste it in your Instagram bio or WhatsApp status. Anyone can open it (no login) and browse your products with images and prices.</li>
+          <li>Each product shows an <strong>Order on WhatsApp</strong> button with a ready-made message.</li>
+        </ul>
+        <p className="tip">💡 Set your <strong>Phone</strong> (WhatsApp number) and <strong>Business Name</strong> in Settings so the catalog shows your shop and the order buttons work.</p>
+      </>
+    ),
+  },
+  {
+    id: 'promote',
+    category: 'Marketing & Sharing',
+    icon: 'fa-solid fa-bullhorn',
+    title: 'Promote a product',
+    summary: 'Create a marketing image + caption to post on social media.',
+    keywords: 'promote marketing post instagram whatsapp caption hashtags image share social',
+    body: (
+      <>
+        <p>Click the <strong>📣 Promote</strong> icon on any product to create a ready-to-post marketing graphic.</p>
+        <ul>
+          <li>An <strong>Instagram-square image</strong> is generated automatically (your product photo + shop name + price).</li>
+          <li>A <strong>caption with hashtags</strong> is written for you — edit it however you like.</li>
+          <li><strong>On a phone:</strong> tap <strong>Share</strong> to send it straight to Instagram/WhatsApp.</li>
+          <li><strong>On a computer:</strong> tap <strong>Download</strong> for the image and <strong>Copy</strong> the caption, then post them manually.</li>
+        </ul>
+        <p className="tip">ℹ️ Instagram &amp; WhatsApp don't let apps post for you, or attach an image and caption together — so you download and paste. This is normal for every app.</p>
+      </>
+    ),
+  },
+  {
     id: 'customers',
     category: 'Customers',
     icon: 'fa-solid fa-users',
@@ -203,6 +242,7 @@ Water Bottle,199,`}</pre>
 const CATEGORY_ORDER = [
   'Getting Started',
   'Products',
+  'Marketing & Sharing',
   'Customers',
   'Bills & Invoices',
   'Payments',
