@@ -51,18 +51,6 @@ export interface Customer {
   createdAt: any; // Firestore Timestamp or Date
 }
 
-// Public-safe subset of the profile, mirrored to the `publicProfiles` collection
-// and readable by anyone for the shareable storefront catalog.
-export interface PublicProfile {
-  userId: string;
-  businessName: string;
-  phone?: string;        // used for "Order on WhatsApp"
-  upiId?: string;        // optional, shown as a pay-to hint
-  tagline?: string;      // optional short shop description
-  catalogTheme?: string; // chosen storefront theme id (see catalogThemes.ts)
-  updatedAt?: any;
-}
-
 export interface UserProfile {
   uid: string;
   email: string;
@@ -76,8 +64,5 @@ export interface UserProfile {
   taxEnabled?: boolean; // when true, invoices can apply a tax rate
   defaultTaxRate?: number; // default GST % prefilled on new invoices, e.g. 18
   gstin?: string; // GST identification number shown on invoices
-  // Public storefront catalog
-  tagline?: string; // short shop description shown on the catalog
-  catalogTheme?: string; // chosen catalog theme id (see catalogThemes.ts)
   createdAt: any; // Firestore Timestamp or Date
 }

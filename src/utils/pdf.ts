@@ -6,8 +6,6 @@
 // function"). Instead we draw a clean, vector invoice with jsPDF + autotable:
 // crisp selectable text, tiny file size, and full control over formatting.
 
-import { BRAND_NAME } from '../config/brand';
-
 const CDN = {
   jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
   autotable:
@@ -130,8 +128,7 @@ const buildInvoiceDoc = async (bill: PdfBill, profile: PdfProfile | null) => {
   const pageH = doc.internal.pageSize.getHeight(); // 297
   const M = 15; // margin
   const rightX = pageW - M;
-  // Invoices always show the fixed app brand, regardless of the user's profile name.
-  const business = BRAND_NAME;
+  const business = profile?.businessName || 'Bill Counter';
 
   // ---- Header: INVOICE title (left) + business block (right) ----
   doc.setFont('helvetica', 'bold');

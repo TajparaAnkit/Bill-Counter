@@ -44,7 +44,6 @@ export const UserMenu: React.FC = () => {
     { label: 'Product Manager', icon: 'fa-solid fa-box', to: '/products' },
     { label: 'Customers', icon: 'fa-solid fa-users', to: '/customers' },
     { label: 'Bills & Invoices', icon: 'fa-solid fa-file-invoice', to: '/bills' },
-    { label: 'Knowledge Base', icon: 'fa-solid fa-book-open', to: '/knowledge-base' },
     { label: 'Settings', icon: 'fa-solid fa-gear', to: '/settings' },
   ];
 

@@ -5,17 +5,15 @@ import { ProductTable } from '../components/Products/ProductTable';
 import { ProductFormModal } from '../components/Products/ProductFormModal';
 import { ProductDetailSidebar } from '../components/Products/ProductDetailSidebar';
 import { BulkImportModal } from '../components/Products/BulkImportModal';
-import { PromoteModal } from '../components/Products/PromoteModal';
 import { useConfirm } from '../components/ui/confirm';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { 
-  getProducts,
-  addProduct,
-  updateProduct,
-  deleteProduct,
-  bulkDeleteProducts,
-  bulkImportProducts
+  getProducts, 
+  addProduct, 
+  updateProduct, 
+  deleteProduct, 
+  bulkImportProducts 
 } from '../services/db';
 import { Product } from '../types';
 
@@ -32,7 +30,6 @@ export const ProductsPage: React.FC = () => {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [promoteProduct, setPromoteProduct] = useState<Product | null>(null);
 
   const loadProductsList = async () => {
     if (!user) return;
@@ -104,42 +101,7 @@ export const ProductsPage: React.FC = () => {
     }
   };
 
-  const handleBulkDelete = async (toDelete: Product[]) => {
-    const ok = await confirm({
-      title: `Delete ${toDelete.length} Product${toDelete.length > 1 ? 's' : ''}`,
-      message: `Are you sure you want to permanently delete ${toDelete.length} selected product${toDelete.length > 1 ? 's' : ''}? This action cannot be undone.`,
-      confirmText: 'Delete',
-      variant: 'danger',
-    });
-    if (!ok) return;
-    try {
-      await bulkDeleteProducts(toDelete.map((p) => p.id));
-      toast.success(`Deleted ${toDelete.length} product${toDelete.length > 1 ? 's' : ''}`);
-      if (selectedProduct && toDelete.some((p) => p.id === selectedProduct.id)) {
-        setSelectedProduct(null);
-      }
-      loadProductsList();
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to delete selected products');
-    }
-  };
-
-  const handleShareCatalog = async () => {
-    if (!user) return;
-    // Full public URL, HashRouter-aware and base-path-aware for GitHub Pages.
-    const url = `${window.location.origin}${import.meta.env.BASE_URL}#/catalog/${user.uid}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success('Catalog link copied! Share it on WhatsApp/Instagram.');
-    } catch {
-      // Clipboard blocked (e.g. insecure context) — open it so they can copy manually.
-      window.open(url, '_blank');
-      toast.success('Catalog opened in a new tab.');
-    }
-  };
-
-  const handleBulkImport = async (items: { name: string; price: number; imageUrl?: string }[]) => {
+  const handleBulkImport = async (items: { name: string; price: number }[]) => {
     if (!user) return;
     try {
       await bulkImportProducts(user.uid, items);
@@ -159,15 +121,7 @@ export const ProductsPage: React.FC = () => {
             <p className="text-slate-500 mt-1 text-sm font-medium">Manage your products and inventory pricing</p>
           </div>
           <div className="flex items-center space-x-3.5">
-            <button
-              onClick={handleShareCatalog}
-              className="btn-secondary flex items-center space-x-2 py-2.5 px-4.5"
-              title="Copy your public catalog link"
-            >
-              <FaIcon icon="fa-solid fa-share-nodes" size={16} />
-              <span>Share Catalog</span>
-            </button>
-            <button
+            <button 
               onClick={() => setIsImportOpen(true)}
               className="btn-secondary flex items-center space-x-2 py-2.5 px-4.5"
             >
@@ -201,8 +155,6 @@ export const ProductsPage: React.FC = () => {
               setIsFormOpen(true);
             }}
             onDelete={handleDeleteProduct}
-            onBulkDelete={handleBulkDelete}
-            onPromote={(p) => setPromoteProduct(p)}
           />
         )}
       </div>
@@ -224,14 +176,8 @@ export const ProductsPage: React.FC = () => {
         onClose={() => setSelectedProduct(null)}
       />
 
-      {/* Promote / Marketing Modal */}
-      <PromoteModal
-        product={promoteProduct}
-        onClose={() => setPromoteProduct(null)}
-      />
-
       {/* Bulk Import Modal */}
-      <BulkImportModal
+      <BulkImportModal 
         isOpen={isImportOpen}
         onClose={() => setIsImportOpen(false)}
         onImport={handleBulkImport}

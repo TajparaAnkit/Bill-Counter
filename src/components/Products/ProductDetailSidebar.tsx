@@ -1,5 +1,4 @@
 import React from 'react';
-import { createPortal } from 'react-dom';
 import { FaIcon } from '../shared/FaIcon';
 import { Product } from '../../types';
 
@@ -30,10 +29,10 @@ export const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({
     });
   };
 
-  return createPortal(
+  return (
     <>
       {/* Backdrop */}
-      <div
+      <div 
         className="fixed inset-0 z-40 bg-black/25 backdrop-blur-xs transition-opacity"
         onClick={onClose}
       />
@@ -121,7 +120,6 @@ export const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({
           </button>
         </div>
       </div>
-    </>,
-    document.body
+    </>
   );
 };
