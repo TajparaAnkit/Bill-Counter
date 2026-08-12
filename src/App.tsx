@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+// HashRouter avoids GitHub Pages 404s on refresh/deep-links (URLs use /#/...)
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './components/Auth/ProtectedRoute';
 import { ConfirmProvider } from './components/ui/confirm';
 import { ToastContainer } from './components/shared/ToastContainer';
@@ -9,16 +10,20 @@ import { ProductsPage } from './pages/ProductsPage';
 import { CustomersPage } from './pages/CustomersPage';
 import { BillsPage } from './pages/BillsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { KnowledgeBasePage } from './pages/KnowledgeBasePage';
+import { CatalogPage } from './pages/CatalogPage';
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <ConfirmProvider>
       <ToastContainer />
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        {/* Public shareable storefront — no auth required */}
+        <Route path="/catalog/:userId" element={<CatalogPage />} />
 
         {/* Protected Routes */}
         <Route
@@ -61,12 +66,20 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/knowledge-base"
+          element={
+            <ProtectedRoute>
+              <KnowledgeBasePage />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Default redirect */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>
       </ConfirmProvider>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 

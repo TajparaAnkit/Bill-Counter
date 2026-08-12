@@ -8,7 +8,14 @@ import { useToast } from '../hooks/useToast';
 import { getCustomers, addCustomer, updateCustomer, deleteCustomer } from '../services/db';
 import { Customer } from '../types';
 import { Pagination } from '../components/ui/Pagination';
-import { getInitials, avatarGradient } from '../utils/avatar';
+
+const avatarPalette = [
+  'from-blue-600 to-indigo-600',
+  'from-sky-500 to-blue-500',
+  'from-violet-500 to-purple-500',
+  'from-amber-500 to-orange-500',
+  'from-rose-500 to-pink-500',
+];
 
 export const CustomersPage: React.FC = () => {
   const { user } = useAuth();
@@ -96,6 +103,19 @@ export const CustomersPage: React.FC = () => {
 
   const pagedCustomers = filtered.slice((page - 1) * pageSize, page * pageSize);
 
+  const initials = (name: string) =>
+    (name || '?')
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase())
+      .join('') || '?';
+
+  const avatarColor = (name: string) => {
+    const code = (name || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+    return avatarPalette[code % avatarPalette.length];
+  };
+
   return (
     <Layout>
       <div className="space-y-6 animate-slide-up">
@@ -165,8 +185,8 @@ export const CustomersPage: React.FC = () => {
                       <tr key={c.id} className="hover:bg-blue-50/30 transition-colors">
                         <td className="p-4">
                           <div className="flex items-center space-x-3">
-                            <span className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarGradient(c.name)} text-white text-xs font-bold flex items-center justify-center shrink-0 shadow-sm`}>
-                              {getInitials(c.name)}
+                            <span className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarColor(c.name)} text-white text-xs font-bold flex items-center justify-center shrink-0 shadow-sm`}>
+                              {initials(c.name)}
                             </span>
                             <span className="font-bold text-slate-700">{c.name}</span>
                           </div>
