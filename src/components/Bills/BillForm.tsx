@@ -3,8 +3,6 @@ import { FaIcon } from '../shared/FaIcon';
 import { Product, BillItem, Customer } from '../../types';
 import { getNextBillNumber } from '../../services/db';
 import { useToast } from '../../hooks/useToast';
-import { BillItemsTable } from './BillItemsTable';
-import { BillTotalsSummary } from './BillTotalsSummary';
 
 export interface BillCustomerInput {
   name: string;
@@ -206,14 +204,96 @@ export const BillForm: React.FC<BillFormProps> = ({
         </div>
       </div>
 
-      {/* Items */}
-      <BillItemsTable
-        items={items}
-        products={products}
-        onItemChange={handleItemChange}
-        onAddItem={handleAddItem}
-        onRemoveItem={handleRemoveItem}
-      />
+      {/* Items Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="border-b border-gray-150 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <th className="pb-3 pr-4">Item Name / Product</th>
+              <th className="pb-3 px-4 w-28">Quantity</th>
+              <th className="pb-3 px-4 w-36">Price (₹)</th>
+              <th className="pb-3 px-4 w-36">Total (₹)</th>
+              <th className="pb-3 pl-4 w-12 text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-150">
+            {items.map((item, index) => (
+              <tr key={index} className="align-middle">
+                {/* Product Name with Suggestions */}
+                <td className="py-3 pr-4 relative">
+                  <input
+                    type="text"
+                    list={`products-list-${index}`}
+                    value={item.productName}
+                    onChange={(e) => handleItemChange(index, 'productName', e.target.value)}
+                    placeholder="Enter item name or select product"
+                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                    required
+                  />
+                  <datalist id={`products-list-${index}`}>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.name}>
+                        ₹{p.price.toFixed(2)}
+                      </option>
+                    ))}
+                  </datalist>
+                </td>
+
+                {/* Quantity */}
+                <td className="py-3 px-4">
+                  <input
+                    type="number"
+                    min="1"
+                    value={item.quantity}
+                    onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm text-center"
+                    required
+                  />
+                </td>
+
+                {/* Price */}
+                <td className="py-3 px-4">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={item.price}
+                    onChange={(e) => handleItemChange(index, 'price', e.target.value)}
+                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                    required
+                  />
+                </td>
+
+                {/* Total */}
+                <td className="py-3 px-4 font-bold text-gray-700">
+                  ₹{item.total.toFixed(2)}
+                </td>
+
+                {/* Delete button */}
+                <td className="py-3 pl-4 text-center">
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveItem(index)}
+                    className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <FaIcon icon="fa-solid fa-trash" size={16} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Add Row Button */}
+      <button
+        type="button"
+        onClick={handleAddItem}
+        className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-semibold text-sm transition-colors"
+      >
+        <FaIcon icon="fa-solid fa-plus" size={16} />
+        <span>Add Line Item</span>
+      </button>
 
       {/* Footer Notes & Total Summary */}
       <div className="flex flex-col md:flex-row justify-between gap-6 border-t border-gray-150 pt-6">
@@ -230,19 +310,77 @@ export const BillForm: React.FC<BillFormProps> = ({
           />
         </div>
 
-        <BillTotalsSummary
-          subtotal={subtotal}
-          discountValue={discountValue}
-          discountMode={discountMode}
-          onDiscountValueChange={setDiscountValue}
-          onDiscountModeChange={setDiscountMode}
-          discountAmount={discountAmount}
-          taxEnabled={taxEnabled}
-          taxRate={taxRate}
-          onTaxRateChange={setTaxRate}
-          taxAmount={taxAmount}
-          grandTotal={grandTotal}
-        />
+        <div className="w-full md:w-80 bg-gray-50 p-4 rounded-xl space-y-2.5">
+          <div className="flex justify-between text-sm text-gray-600">
+            <span>Subtotal</span>
+            <span>₹{subtotal.toFixed(2)}</span>
+          </div>
+
+          {/* Discount (optional) */}
+          <div className="flex justify-between items-center text-sm text-gray-600 gap-2">
+            <div className="flex items-center gap-1.5">
+              <span>Discount</span>
+              <div className="flex rounded-md border border-gray-300 overflow-hidden text-xs">
+                <button
+                  type="button"
+                  onClick={() => setDiscountMode('amount')}
+                  title="Flat discount in rupees (₹)"
+                  aria-label="Discount in rupees"
+                  className={`px-1.5 py-0.5 ${discountMode === 'amount' ? 'bg-blue-600 text-white' : 'bg-white text-gray-500'}`}
+                >₹</button>
+                <button
+                  type="button"
+                  onClick={() => setDiscountMode('percent')}
+                  title="Percentage discount (% of subtotal)"
+                  aria-label="Discount as percentage"
+                  className={`px-1.5 py-0.5 ${discountMode === 'percent' ? 'bg-blue-600 text-white' : 'bg-white text-gray-500'}`}
+                >%</button>
+              </div>
+            </div>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={discountValue}
+              onChange={(e) => setDiscountValue(e.target.value)}
+              placeholder="0"
+              className="w-20 text-right px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+            />
+          </div>
+          {discountAmount > 0 && (
+            <div className="flex justify-between text-xs text-blue-600">
+              <span>Discount applied</span>
+              <span>−₹{discountAmount.toFixed(2)}</span>
+            </div>
+          )}
+
+          {/* Tax (optional — only when enabled in Settings) */}
+          {taxEnabled && (
+            <div className="flex justify-between items-center text-sm text-gray-600 gap-2">
+              <div className="flex items-center gap-1.5">
+                <span>Tax</span>
+                <div className="flex items-center">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={taxRate}
+                    onChange={(e) => setTaxRate(e.target.value)}
+                    placeholder="0"
+                    className="w-14 text-right px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                  />
+                  <span className="ml-1">%</span>
+                </div>
+              </div>
+              <span>₹{taxAmount.toFixed(2)}</span>
+            </div>
+          )}
+
+          <div className="flex justify-between font-bold text-gray-900 text-lg border-t border-gray-200 pt-2 mt-1">
+            <span>Total</span>
+            <span className="text-blue-600">₹{grandTotal.toFixed(2)}</span>
+          </div>
+        </div>
       </div>
 
       {/* Action buttons */}

@@ -7,7 +7,6 @@ import { getBills, getProducts, getBusinessProfile } from '../services/db';
 import { Bill, Product, UserProfile } from '../types';
 import { FaIcon } from '../components/shared/FaIcon';
 import { getAmountDue, getPaymentStatus } from '../utils/payment';
-import { formatDate, toMillis } from '../utils/format';
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -57,8 +56,14 @@ export const DashboardPage: React.FC = () => {
     return d.getTime();
   };
 
+  const getTimestampMs = (createdAt: any) => {
+    if (!createdAt) return 0;
+    if (createdAt.seconds) return createdAt.seconds * 1000;
+    return new Date(createdAt).getTime();
+  };
+
   const todaysSales = bills
-    .filter((b) => toMillis(b.createdAt) >= getStartOfToday())
+    .filter((b) => getTimestampMs(b.createdAt) >= getStartOfToday())
     .reduce((sum, b) => sum + b.total, 0);
 
   const averageOrderValue = totalBills > 0
@@ -82,7 +87,7 @@ export const DashboardPage: React.FC = () => {
       const end = start + 86400000;
       const total = bills
         .filter((b) => {
-          const t = toMillis(b.createdAt);
+          const t = getTimestampMs(b.createdAt);
           return t >= start && t < end;
         })
         .reduce((s, b) => s + b.total, 0);
@@ -121,6 +126,14 @@ export const DashboardPage: React.FC = () => {
   };
 
   const topProductsList = getTopProducts();
+
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return '';
+    if (timestamp.toDate) {
+      return timestamp.toDate().toLocaleDateString('en-IN');
+    }
+    return new Date(timestamp).toLocaleDateString('en-IN');
+  };
 
   if (isLoading) {
     return (
