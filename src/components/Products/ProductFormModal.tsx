@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { FaIcon } from '../shared/FaIcon';
 import { Product } from '../../types';
 import { useToast } from '../../hooks/useToast';
@@ -75,25 +74,24 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     }
   };
 
-  return createPortal(
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="flex flex-col bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-        <div className="shrink-0 flex justify-between items-center bg-gray-50 border-b border-gray-150 p-4">
-          <div>
-            <h2 className="text-lg font-bold text-gray-800">
-              {product ? 'Edit Product' : 'Add Product'}
-            </h2>
-            <p className="text-sm text-slate-500 mt-0.5">Save product details and image</p>
-          </div>
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+        {/* Header */}
+        <div className="flex justify-between items-center bg-gradient-to-r from-blue-500 to-blue-600 p-6 text-white">
+          <h2 className="text-xl font-bold">
+            {product ? '🧶 Edit Product' : '🧶 Add Product'}
+          </h2>
           <button 
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1.5 rounded-full transition-colors"
+            className="hover:bg-white/20 p-1.5 rounded-full transition-colors"
           >
             <FaIcon icon="fa-solid fa-xmark" size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               Product Name *
@@ -167,7 +165,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             </div>
           </div>
 
-          <div className="flex flex-col-reverse sm:flex-row gap-3 border-t border-gray-150 pt-4">
+          {/* Actions */}
+          <div className="flex space-x-3 pt-3">
             <button
               type="button"
               onClick={onClose}
@@ -193,7 +192,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           </div>
         </form>
       </div>
-    </div>,
-    document.body
+    </div>
   );
 };

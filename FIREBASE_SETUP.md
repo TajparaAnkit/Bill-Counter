@@ -1,233 +1,137 @@
-# 🔥 Firebase Setup Guide - Complete Walkthrough
+# 🔥 Firebase Setup Guide
 
-## Current Status
-✅ Firebase config added to `.env.local`  
-✅ React app running on http://localhost:5173  
-⏳ Firebase services need to be enabled
+A step-by-step walkthrough to connect **Bill Counter** to your own Firebase project. Takes ~15 minutes. (For a quick tickable version, see [FIREBASE_SETUP_CHECKLIST.md](FIREBASE_SETUP_CHECKLIST.md).)
 
----
-
-## Step 1: Enable Firebase Authentication
-
-### Go to Firebase Console
-1. Visit: https://console.firebase.google.com/
-2. Select your project: **naitu-saas**
-3. In the left sidebar, find **Authentication** under "Build"
-
-### Enable Email/Password Provider
-1. Click **Authentication**
-2. Click **Sign-in method** tab
-3. Look for **Email/Password** option
-4. Click on it
-5. Toggle **Enable** (switch to ON)
-6. Click **Save**
-
-**Screenshot Path:** Authentication → Sign-in method → Email/Password → Enable
+> **Never commit secrets.** Your Firebase config goes in `.env.local`, which is git-ignored. Do not paste real API keys into documentation or share them publicly.
 
 ---
 
-## Step 2: Create Firestore Database
+## Step 1 — Create a Firebase project
 
-### Navigate to Firestore
-1. In left sidebar, find **Firestore Database** under "Build"
-2. Click **Create database**
-
-### Configuration
-1. **Mode:** Select **Production mode** (important for security rules)
-2. **Location:** Choose your region
-   - For India: Select **asia-south1 (Mumbai)** or **asia-southeast1**
-   - This affects data latency and pricing
-3. Click **Create**
-
-Wait for database to initialize (2-3 minutes)
+1. Go to the [Firebase Console](https://console.firebase.google.com/) → **Add project**.
+2. Give it a name (e.g. `bill-counter`). Google Analytics is optional.
+3. When it's ready, open **Project Settings** (gear icon) → **Your apps** → add a **Web app** (`</>`) and copy the config values shown.
 
 ---
 
-## Step 3: Set Firestore Security Rules
+## Step 2 — Add your config to `.env.local`
 
-### Update Security Rules
-1. In Firestore Database, click **Rules** tab
-2. Replace all text with this:
+In the project folder:
+
+```bash
+cp .env.example .env.local
+```
+
+Fill in the values from Step 1 (these are **your** project's values, not shared):
+
+```env
+VITE_FIREBASE_API_KEY=your_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+```
+
+---
+
+## Step 3 — Enable Authentication
+
+In **Authentication → Sign-in method**:
+
+1. Enable **Email/Password**.
+2. Enable **Google** (needed for the "Continue with Google" button).
+   - Under **Settings → Authorized domains**, make sure your domain is listed. `localhost` is included by default; add your production domain when you deploy.
+
+---
+
+## Step 4 — Create the Firestore Database
+
+1. **Firestore Database → Create database**.
+2. Choose **Production mode**.
+3. Pick a region close to your users (e.g. `asia-south1` (Mumbai) for India).
+
+---
+
+## Step 5 — Publish Firestore Security Rules
+
+Bill Counter uses **flat, top-level collections** where each document carries a `userId` field. In the **Rules** tab, replace everything with:
 
 ```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // User documents - only user can read/write their own
     match /users/{userId} {
-      allow read, write: if request.auth.uid == userId;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-
-    // Products - scoped to user
-    match /products/{userId}/items/{productId} {
-      allow read, write: if request.auth.uid == userId;
+    match /products/{productId} {
+      allow read:           if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create:         if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
-
-    // Bills - scoped to user
-    match /bills/{userId}/items/{billId} {
-      allow read, write: if request.auth.uid == userId;
+    match /bills/{billId} {
+      allow read:           if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create:         if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    match /customers/{customerId} {
+      allow read:           if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create:         if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
   }
 }
 ```
 
-3. Click **Publish**
+Click **Publish**.
+
+> ⚠️ Do **not** use nested paths like `products/{userId}/items/{productId}` — the app stores documents in flat collections with a `userId` field, so nested rules would deny all access.
 
 ---
 
-## Step 4: Enable Firebase Storage (for images)
+## Step 6 — Enable Storage (optional, for product images)
 
-### Create Storage Bucket
-1. In left sidebar, find **Storage** under "Build"
-2. Click **Get started**
-3. Choose region (same as Firestore: asia-south1)
-4. Click **Done**
-
-### Update Storage Rules
-1. Click **Rules** tab
-2. Replace with:
+1. **Storage → Get started**, same region as Firestore.
+2. In the **Rules** tab:
 
 ```javascript
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     match /users/{userId}/{allPaths=**} {
-      allow read, write: if request.auth.uid == userId;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
 ```
 
-3. Click **Publish**
+Click **Publish**.
 
 ---
 
-## Step 5: Verify Environment Variables
-
-### Check `.env.local` file
-Located at: `d:\naitu-saas\.env.local`
-
-Should contain:
-```env
-VITE_FIREBASE_API_KEY=AIzaSyBmV4DxgCLLSmB3I0lVwRg8ZlX_iFu7eRQ
-VITE_FIREBASE_AUTH_DOMAIN=naitu-saas.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=naitu-saas
-VITE_FIREBASE_STORAGE_BUCKET=naitu-saas.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID=649847775364
-VITE_FIREBASE_APP_ID=1:649847775364:web:b6d654b4c03dc1ea52e2d1
-VITE_FIREBASE_MEASUREMENT_ID=G-455627FCW8
-```
-
-✅ If all values are present, your config is ready!
-
----
-
-## Step 6: Restart Dev Server
-
-After enabling services in Firebase, restart the app:
+## Step 7 — Run the app
 
 ```bash
-# Terminal 1: Stop current server
-Ctrl+C
-
-# Restart
+npm install
 npm run dev
 ```
 
----
+Open the app, register a test account (or use **Continue with Google**), and confirm you land on the Dashboard.
 
-## Testing the Setup
-
-### Test Registration
-1. Open http://localhost:5173/register
-2. Fill form:
-   - Business Name: `Test Shop`
-   - Email: `test@example.com`
-   - Password: `Test@123456`
-   - Confirm: `Test@123456`
-3. Click Register
-
-### Expected Results
-- ✅ User created in Firebase Auth
-- ✅ User document saved in Firestore
-- ✅ Redirected to Dashboard
-- ✅ No errors in browser console
-
-### Verify in Firebase Console
-1. Go to **Authentication**
-2. Should see new user with email: `test@example.com`
+**Verify in the console:** Authentication → Users should show your new account, and Firestore → Data should show a `users/{uid}` document.
 
 ---
 
 ## Troubleshooting
 
-### "Configuration not found" Error
-**Cause:** Authentication not enabled  
-**Fix:** Follow Step 1 above to enable Email/Password
-
-### "Permission denied" Error
-**Cause:** Firestore rules not set correctly  
-**Fix:** 
-- Check rules are published (blue "Publish" button should not appear)
-- Verify rule syntax matches code above
-- Wait 30 seconds for rules to propagate
-
-### "Quota exceeded" Error
-**Cause:** Too many API calls  
-**Fix:** Free tier allows 1000s per day. This is normal in development. Not a real issue.
-
-### Env variables not loading
-**Cause:** `.env.local` not reloaded  
-**Fix:**
-1. Stop dev server: Ctrl+C
-2. Restart: npm run dev
-3. Clear browser cache: Ctrl+Shift+Delete
-
-### Form not submitting
-**Cause:** Password mismatch or weak password  
-**Requirement:** Password must be 6+ characters
+| Problem | Fix |
+|---------|-----|
+| `auth/invalid-api-key` on startup | `.env.local` missing or has placeholder values — fill real values, then restart `npm run dev`. |
+| Google sign-in popup fails | Enable the **Google** provider (Step 3) and add your domain to **Authorized domains**. |
+| `Missing or insufficient permissions` | Publish the rules from Step 5 (including the `customers` block); wait ~30s to propagate. |
+| Env vars not loading | Vite reads env only at startup — stop and restart the dev server after editing `.env.local`. |
+| Password rejected on register | Must be 6+ characters, with at least one uppercase letter and one number. |
 
 ---
 
-## Firebase Console Navigation
-
-**Quick Access:**
-- Authentication: https://console.firebase.google.com/u/0/project/naitu-saas/authentication/users
-- Firestore: https://console.firebase.google.com/u/0/project/naitu-saas/firestore/data
-- Storage: https://console.firebase.google.com/u/0/project/naitu-saas/storage/files
-- Settings: https://console.firebase.google.com/u/0/project/naitu-saas/settings/general
-
----
-
-## Timeline
-- **Step 1 (Auth):** 2-3 minutes
-- **Step 2 (Firestore):** 3-5 minutes (includes initialization wait)
-- **Step 3 (Rules):** 2 minutes
-- **Step 4 (Storage):** 3-5 minutes
-- **Step 5 (Verify):** 1 minute
-- **Total:** 15-20 minutes
-
----
-
-## What's Next
-
-Once Firebase is fully set up:
-1. ✅ Test registration flow
-2. ✅ Test login flow
-3. ✅ Test dashboard access
-4. ✅ Start Phase 2 implementation
-
-All Phase 2 enhancements are ready to go!
-
----
-
-## Questions?
-
-If you hit any issues:
-1. Check Firebase Console for error messages
-2. Look at browser console (F12) for detailed errors
-3. Verify all steps completed in order
-4. Restart dev server after each Firebase change
-
-**Current App Status:** Ready for Firebase setup ✅  
-**Firebase Status:** Awaiting your setup (in progress)
+Once these steps are done, Bill Counter is fully connected and ready to use. See [USER_GUIDE.md](USER_GUIDE.md) for how to use each feature.

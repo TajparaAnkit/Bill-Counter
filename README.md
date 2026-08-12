@@ -1,71 +1,88 @@
-# Bill Counter - SaaS Platform
+# Bill Counter — Billing & Invoicing Platform
 
-A modern, scalable SaaS application for managing small business inventory and billing. Built with React 19, Vite, Tailwind CSS, shadcn/ui, and Firebase.
+A modern, multi-user SaaS application for small businesses to manage products, customers, and invoices — with payment tracking, GST/tax support, UPI scan-to-pay QR codes, and one-tap WhatsApp sharing. Built with React 19, Vite, Tailwind CSS v4, shadcn/ui, and Firebase.
+
+> 📘 Looking for a plain-English overview of what the app does and how to use it? See **[USER_GUIDE.md](USER_GUIDE.md)** — a customer-friendly feature walkthrough.
 
 ## 🚀 Features
 
-- ✅ User Authentication (Register / Login + **Google Sign-In**)
-- ✅ Product Management (Add, Edit, Delete, **Bulk Delete**)
-- ✅ **Bulk Import from Excel / CSV** with image upload (matched by filename)
-- ✅ Product image hosting via **Cloudinary** (no billing / Blaze plan needed)
-- ✅ Slide-out Product Detail panel (right-side drawer)
-- ✅ **Customer Directory** (add/edit, reuse on invoices)
-- ✅ Invoice/Bill Creation with Line Items, **Discount & Tax/GST**
-- ✅ **Payment Tracking** (Paid / Partial / Unpaid + method: cash, UPI, card, bank)
-- ✅ Bill Detail View + PDF Export (vector, print-ready A4)
-- ✅ **UPI Scan-to-Pay QR** on Invoices (generated from your UPI ID)
-- ✅ **Shareable public Storefront Catalog** (mobile-friendly link, "Order on WhatsApp")
-- ✅ **Promote Product** — auto-generated Instagram-square marketing image + caption/hashtags to share on WhatsApp/Instagram
-- ✅ Sales Dashboard with Metrics
-- ✅ Business Profile / Settings (invoice prefix, notes, tax, UPI)
-- ✅ Fixed brand name on invoices (single source of truth)
-- ✅ **In-app Knowledge Base** (feature docs & help)
-- ✅ Real-time Data Sync with Firestore
-- ✅ Responsive Design (Mobile-Friendly)
-- ✅ Modal & Drawer-based Workflows
-- ✅ Toast Notifications & Error Boundary
-- ✅ Multi-user SaaS Support
+**Authentication**
+- Email/password sign-up & login
+- **Google sign-in** (one click)
+- **Forgot password** (email reset link)
+- Protected routes with auth guards
+
+**Products**
+- Add / edit / delete with image upload
+- **Bulk import** via JSON or CSV
+- Search + pagination
+
+**Customers**
+- Customer directory (add / edit / delete)
+- Search, and **autocomplete on invoices** (auto-fills phone)
+
+**Invoices**
+- Line-item invoices with sequential, **configurable numbering** (e.g. `INV-0001`)
+- **Optional discount** (flat ₹ or %) and **optional GST/tax** with GSTIN on the invoice
+- Vector, print-ready **A4 PDF export**
+- **UPI scan-to-pay QR** generated per invoice (from your UPI ID)
+- **Share to WhatsApp** (sends the PDF)
+- Delete with confirmation
+- Search + pagination
+
+**Payments**
+- **Paid / Partial / Unpaid** status per invoice
+- Amount-paid and **outstanding-dues** tracking
+- Mark-as controls in the invoice view
+
+**Dashboard**
+- KPI cards (products, today's sales, total bills, avg. order value)
+- **7-day sales trend** mini bar chart
+- Recent transactions, top products, and a **receivables** summary
+
+**Settings**
+- Business profile (name, address, phone) shown on invoices
+- **UPI ID**, **invoice-number prefix**, and **GST config** (toggle, default rate, GSTIN)
+- Default invoice footer terms
+
+**Platform / UX**
+- Corporate navy theme, Plus Jakarta Sans headings
+- Reusable confirm & prompt dialogs, toast notifications, global error boundary
+- Real-time Firestore sync · responsive / mobile-friendly
 
 ## 📋 Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
 | Frontend | React 19, Vite 8, TypeScript |
-| UI / Styling | Tailwind CSS v4, shadcn/ui (built on Radix UI primitives) |
+| UI / Styling | Tailwind CSS v4, shadcn/ui (Radix UI primitives) |
+| Fonts | Inter (body) + Plus Jakarta Sans (headings), self-hosted via `@fontsource` |
 | State Management | Zustand |
-| Routing | React Router v7 (`HashRouter` for GitHub Pages) |
-| Backend/DB | Firebase (Auth + Firestore) |
-| Image Hosting | Cloudinary (unsigned browser uploads) |
-| Spreadsheet Parsing | SheetJS (`xlsx`) for Excel/CSV import |
+| Routing | React Router v7 |
+| Backend / DB | Firebase (Auth + Firestore + Storage) |
 | Icons | FontAwesome |
 | PDF Export | jsPDF + jspdf-autotable (loaded on demand from CDN) |
+| QR Codes | qrcodejs (UPI payment QR, loaded on demand from CDN) |
 
 ## 🛠 Prerequisites
 
-- **Node.js** 18+ recommended ([Download](https://nodejs.org/))
+- **Node.js** 18+ ([Download](https://nodejs.org/))
 - **npm** 9+ or **yarn**
 - **Firebase Account** ([Create Free](https://console.firebase.google.com/))
 
 ## 📦 Installation & Setup
 
-### 1. Navigate to the Project
-```bash
-cd d:\Bill-Counter
-```
-
-### 2. Install Dependencies
+### 1. Install dependencies
 ```bash
 npm install
 ```
 
-### 3. Create Firebase Project
-1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Click "Add Project"
-3. Follow the steps (no need to enable Google Analytics)
-4. Once created, go to Project Settings (gear icon)
-5. Copy your config values
+### 2. Create a Firebase project
+1. Go to the [Firebase Console](https://console.firebase.google.com/) → **Add Project**
+2. Finish setup (Google Analytics optional)
+3. Open **Project Settings** (gear icon) and copy your web-app config values
 
-### 4. Configure Environment Variables
+### 3. Configure environment variables
 
 > ⚠️ **Required.** Without a valid `.env.local`, the app throws `FirebaseError: auth/invalid-api-key` on startup.
 
@@ -73,106 +90,73 @@ npm install
 cp .env.example .env.local
 ```
 
-Edit `.env.local` with your Firebase credentials:
+Fill `.env.local` with your Firebase credentials:
 ```env
 VITE_FIREBASE_API_KEY=your_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+VITE_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
 VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 VITE_FIREBASE_APP_ID=your_app_id
 ```
 
-### 5. Enable Firebase Services
+### 4. Enable Firebase services
 
-In your Firebase Console:
+**Authentication** — Authentication → Sign-in method:
+- Enable **Email/Password**
+- Enable **Google** (required for the "Continue with Google" button; add your domain under *Authorized domains* — `localhost` is included by default)
 
-**Authentication:**
-- Go to Authentication > Sign-in method
-- Enable "Email/Password" provider
+**Firestore Database** — create a database in *production mode* and pick your region.
 
-**Firestore Database:**
-- Go to Firestore Database
-- Click "Create Database"
-- Choose "Start in production mode"
-- Select your region
-
-**Firestore Security Rules:**
-
-This app stores data in **flat top-level collections**, each document carrying a `userId` field (queries filter with `where('userId', '==', uid)`). Use the rules below (also in [`firestore.rules`](firestore.rules)) — note that **products are publicly readable** to power the shareable catalog, and a separate `publicProfiles` collection exposes only public-safe shop info:
+**Firestore Security Rules** — all collections are flat and top-level, each document carrying a `userId` field (queries filter with `where('userId', '==', uid)`). Publish these rules:
 
 ```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // User profile — private, owner only (holds email etc.)
+    // User profile — only the owner
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-
-    // Public storefront profile — anyone can read (shareable catalog); owner writes only
-    match /publicProfiles/{userId} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Products — PUBLICLY READABLE (powers the catalog); create/update/delete owner-only
+    // Products — owner-scoped via the userId field
     match /products/{productId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read:           if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create:         if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
-
     // Bills — owner-scoped via the userId field
     match /bills/{billId} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read:           if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create:         if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
-
     // Customers — owner-scoped via the userId field
     match /customers/{customerId} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read:           if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create:         if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
   }
 }
 ```
 
-> **Privacy note:** only product listings (name, price, image) and public shop info
-> (name, phone, UPI) are exposed via the catalog. Bills, customers, and your email
-> stay private.
-
-> **Note:** Product images are **not** stored in Firebase Storage. Firebase now
-> requires the paid Blaze plan to use Cloud Storage, so this app uses **Cloudinary**
-> (free tier) for image hosting instead — see the next section.
-
-### Image Hosting (Cloudinary)
-
-Product images (single add/edit and bulk import) are uploaded directly from the
-browser to Cloudinary using an **unsigned upload preset** — no server, no billing.
-
-1. Create a free account at [cloudinary.com](https://cloudinary.com/).
-2. Copy your **Cloud name** from the dashboard.
-3. Go to **Settings → Upload → Upload presets → Add upload preset**, set
-   **Signing Mode = Unsigned**, and note the preset name.
-4. Set both values in [`src/services/db.ts`](src/services/db.ts):
-
-```ts
-const CLOUDINARY_CLOUD_NAME = 'your_cloud_name';
-const CLOUDINARY_UPLOAD_PRESET = 'your_unsigned_preset';
+**Storage** (optional — only for product images) — Storage → Rules:
+```javascript
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /users/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
 ```
 
-Cloudinary allows browser uploads from any origin, so this works on localhost and
-your live site with no CORS setup.
-
-### 6. Start Development Server
+### 5. Start the dev server
 ```bash
 npm run dev
 ```
-
-The app opens at `http://localhost:5173` (Vite auto-selects the next free port, e.g. `5174`, if 5173 is in use).
+Opens at `http://localhost:5173` (Vite picks the next free port if busy).
 
 ## 📁 Project Structure
 
@@ -181,345 +165,132 @@ Bill-Counter/
 ├── src/
 │   ├── components/
 │   │   ├── Auth/
-│   │   │   ├── LoginForm.tsx
+│   │   │   ├── LoginForm.tsx           # email/password login + forgot-password
 │   │   │   ├── RegisterForm.tsx
+│   │   │   ├── GoogleButton.tsx        # Firebase Google sign-in
+│   │   │   ├── AuthArt.tsx             # decorative split-screen panel
 │   │   │   └── ProtectedRoute.tsx
 │   │   ├── Products/
-│   │   │   ├── ProductTable.tsx           # table + bulk-delete + promote actions
+│   │   │   ├── ProductTable.tsx        # search + pagination
 │   │   │   ├── ProductFormModal.tsx
-│   │   │   ├── ProductDetailSidebar.tsx   # slide-out product detail panel (portal)
-│   │   │   ├── PromoteModal.tsx           # marketing image + caption/hashtags share
-│   │   │   └── BulkImportModal.tsx        # Excel/CSV import + Cloudinary images
+│   │   │   ├── ProductDetailSidebar.tsx
+│   │   │   └── BulkImportModal.tsx     # JSON / CSV import
 │   │   ├── Customers/
 │   │   │   └── CustomerFormModal.tsx
 │   │   ├── Bills/
-│   │   │   ├── BillForm.tsx
-│   │   │   └── BillDetailModal.tsx        # invoice preview + PDF download (portal-based)
+│   │   │   ├── BillForm.tsx            # line items + discount/tax + customer autocomplete
+│   │   │   └── BillDetailModal.tsx     # invoice preview, PDF, UPI QR, WhatsApp, payment status
 │   │   ├── shared/
-│   │   │   ├── Header.tsx                 # logo + clock + user menu
+│   │   │   ├── Header.tsx              # logo + clock + user menu
 │   │   │   ├── Layout.tsx
-│   │   │   ├── UserMenu.tsx               # dropdown holding all navigation + logout
+│   │   │   ├── UserMenu.tsx            # dropdown holding all navigation + logout
 │   │   │   ├── FaIcon.tsx
 │   │   │   ├── ToastContainer.tsx
 │   │   │   └── ErrorBoundary.tsx
 │   │   └── ui/
-│   │       ├── dropdown-menu.tsx          # shadcn/ui dropdown (Radix-based)
-│   │       ├── Pagination.tsx
-│   │       └── confirm.tsx                # confirm/prompt dialog provider
+│   │       ├── dropdown-menu.tsx       # shadcn/ui dropdown (Radix-based)
+│   │       ├── Pagination.tsx          # reusable table pagination
+│   │       └── confirm.tsx             # useConfirm() + usePrompt() dialogs
 │   ├── pages/
-│   │   ├── LoginPage.tsx
-│   │   ├── RegisterPage.tsx
+│   │   ├── LoginPage.tsx  RegisterPage.tsx
 │   │   ├── DashboardPage.tsx
-│   │   ├── ProductsPage.tsx
-│   │   ├── CustomersPage.tsx
+│   │   ├── ProductsPage.tsx  CustomersPage.tsx
 │   │   ├── BillsPage.tsx
-│   │   ├── SettingsPage.tsx
-│   │   ├── KnowledgeBasePage.tsx          # in-app feature docs
-│   │   └── CatalogPage.tsx                # PUBLIC shareable storefront (no auth)
-│   ├── config/
-│   │   ├── brand.ts                       # BRAND_NAME (invoice branding)
-│   │   └── catalogThemes.ts               # storefront theme(s)
+│   │   └── SettingsPage.tsx
 │   ├── services/
-│   │   ├── firebase.ts          # Firebase config & init
-│   │   └── db.ts                # Firestore access (products, bills, customers, profile, catalog)
-│   ├── store/
-│   │   ├── auth.ts              # Zustand auth store
-│   │   └── toast.ts             # Zustand toast store
-│   ├── hooks/
-│   │   ├── useAuth.ts
-│   │   └── useToast.ts
-│   ├── types/
-│   │   └── index.ts             # TypeScript interfaces
+│   │   ├── firebase.ts                 # Firebase config & init
+│   │   └── db.ts                       # Firestore access (products, bills, customers, profile)
+│   ├── store/                          # Zustand: auth.ts, toast.ts
+│   ├── hooks/                          # useAuth.ts, useToast.ts
+│   ├── types/index.ts                  # TypeScript interfaces
 │   ├── utils/
-│   │   ├── validators.ts        # email/password validation + Firebase error mapping
-│   │   ├── pdf.ts               # jsPDF-based invoice export
-│   │   ├── upiQr.ts             # UPI scan-to-pay QR generator
-│   │   ├── payment.ts           # payment status helpers
-│   │   └── promoImage.ts        # canvas marketing-image + caption generator
-│   ├── assets/
-│   │   └── qr.ts                # invoice QR / barcode image (swappable sample)
-│   ├── lib/
-│   │   └── utils.ts             # cn() class-name helper (clsx + tailwind-merge)
-│   ├── App.tsx                  # Main router
-│   ├── main.tsx
-│   └── index.css
-├── public/
-├── index.html
-├── package.json
-├── vite.config.ts
-├── tailwind.config.js
-├── postcss.config.js
-├── components.json
-├── tsconfig.json
-├── tsconfig.node.json
-├── .env.example
-└── README.md
-```
-
-## 🚀 Running the Project
-
-### Development Mode
-```bash
-npm run dev
-```
-
-### Build for Production
-```bash
-npm run build
-```
-
-### Preview Production Build
-```bash
-npm run preview
-```
-
-## 📝 Testing the App
-
-1. **Register:** Go to `/register`, create an account with email & business name (or Google Sign-In)
-2. **Login:** Use those credentials to log in
-3. **Products:** Add products individually, **bulk import** from a spreadsheet, or **bulk delete** with row checkboxes
-4. **Promote:** Click the 📣 icon on a product to generate a marketing image + caption to share
-5. **Share Catalog:** Click **Share Catalog** to copy your public storefront link
-6. **Customers:** Build a customer directory to reuse on invoices
-7. **Bills:** Create an invoice with line items, discount & tax, track payment, then export to PDF
-8. **Dashboard:** Review sales metrics
-9. **Settings:** Update your business profile (name, address, phone, UPI ID, invoice prefix, tax, notes)
-10. **Knowledge Base:** In-app help explaining every feature
-
-> **Navigation:** All pages (Dashboard, Products, Customers, Bills, Knowledge Base, Settings) and Logout live in the **user menu** — the avatar dropdown at the top-right of the header.
-
-### 📥 Bulk Import Products (Excel / CSV)
-
-From the **Products** page → **Import**:
-
-1. **Prepare a sheet** with columns `name`, `price`, and optionally `image`
-   (headers are flexible: `productname`/`title`, `amount`/`cost`, `imageurl`/`link`):
-   ```csv
-   name,price,image
-   T-Shirt,450,https://example.com/tshirt.jpg
-   Coffee Mug,299,
-   ```
-2. **Images on your computer:** a browser can't read local paths (`C:\pics\mug.jpg`).
-   Click **Upload Product Images**, select the actual files — they upload to Cloudinary
-   and are matched to products by the **filename in the sheet's image column**
-   (falls back to matching the product name if there's no image column).
-3. **Upload the `.xlsx` / `.csv`** — products are created with images attached where matched.
-
-### 🛍️ Shareable Storefront Catalog
-
-A public, mobile-friendly catalog that sellers can share on Instagram/WhatsApp:
-
-1. On the **Products** page, click **Share Catalog** → the public link is copied
-   (`.../#/catalog/<userId>`).
-2. Anyone can open it (no login) and see the shop's products with images/prices.
-3. Each product has an **"Order on WhatsApp"** button that opens WhatsApp with a
-   pre-filled message. The button appears when the seller's **Phone** (WhatsApp
-   number) is set in **Settings**.
-4. The catalog uses a fixed default theme; the seller's shop name comes from
-   **Settings → Business Name**. Public data is mirrored to `publicProfiles`
-   whenever Settings are saved.
-
-> Requires the **public** Firestore rules above to be published, and the seller
-> to save **Settings** once (to create their `publicProfiles` doc).
-
-### 📣 Promote Product (Marketing)
-
-Click the **📣 megaphone** icon on any product to open the Promote dialog:
-
-- Auto-generates a **1080×1080 Instagram-square image** (product photo + shop name +
-  price badge) on a canvas — see [`src/utils/promoImage.ts`](src/utils/promoImage.ts).
-- Auto-writes a **caption + hashtags** (editable).
-- **Share** (mobile only — opens the native share sheet to Instagram/WhatsApp with
-  the image), **Download image**, **Copy caption**, and **WhatsApp** (text).
-
-> Instagram/WhatsApp don't allow web apps to attach an image *and* caption in one
-> action, and desktop browsers can't push images to those apps — so the Share
-> button only appears on devices that support image sharing (mobile). On desktop,
-> use Download + Copy and post manually.
-
-## 🎨 Customization
-
-### App Name / Branding
-The app name (**Bill Counter**) appears in the header, login/register pages, and browser tab. To rename, update the text in `src/components/shared/Header.tsx`, `src/pages/LoginPage.tsx`, `src/pages/RegisterPage.tsx`, and the `<title>` in `index.html`.
-
-**Invoice brand name** is a single fixed value in [`src/config/brand.ts`](src/config/brand.ts):
-
-```ts
-export const BRAND_NAME = 'Bill Counter';
-```
-
-Every invoice (on-screen and PDF — header, UPI payee, footer) uses `BRAND_NAME`. Change this one line to rebrand all invoices. (The seller's other details — address, phone, UPI — still come from **Settings** per user.)
-
-### Invoice QR / Barcode
-Invoices show a QR/barcode driven by a single constant in [`src/assets/qr.ts`](src/assets/qr.ts). It ships with a generated placeholder — replace `INVOICE_QR` with your own image to use it everywhere (both the on-screen invoice and the PDF):
-
-```ts
-export const INVOICE_QR = 'data:image/png;base64,....';   // data URL (recommended)
-// or a hosted URL (must allow CORS), or an imported image file
-export const INVOICE_QR_CAPTION = 'Scan to pay / verify'; // set '' to hide
+│   │   ├── validators.ts               # validation + Firebase error mapping
+│   │   ├── pdf.ts                      # jsPDF invoice export
+│   │   ├── upiQr.ts                    # UPI payment-QR generator
+│   │   └── payment.ts                  # payment-status helpers
+│   ├── assets/qr.ts                    # fallback invoice QR (swappable placeholder)
+│   ├── lib/utils.ts                    # cn() class-name helper
+│   ├── App.tsx  main.tsx  index.css
+├── public/  index.html
+├── package.json  vite.config.ts  tailwind.config.js  postcss.config.js
+├── components.json  tsconfig.json  .env.example
+├── README.md  USER_GUIDE.md  FIREBASE_SETUP.md  FIREBASE_SETUP_CHECKLIST.md
 ```
 
 ## 🔐 Firestore Collections Schema
 
-Collections are flat and top-level; each document stores its owner's `userId`.
-
 ```
 users/{userId}
-├── uid: string
-├── email: string
-├── businessName: string
-├── address: string (optional)
-├── phone: string (optional)
-├── invoiceNotes: string (optional)
-├── upiId: string (optional)          # powers the invoice scan-to-pay QR
-├── billPrefix: string (optional)     # e.g. "INV" -> INV-0001
-├── taxEnabled: boolean (optional)
-├── defaultTaxRate: number (optional) # default GST %, e.g. 18
-├── gstin: string (optional)
-└── createdAt: timestamp
-
-publicProfiles/{userId}                # public-safe mirror for the shareable catalog
-├── userId: string
-├── businessName: string
-├── phone: string (optional)           # used for "Order on WhatsApp"
-├── upiId: string (optional)
-└── updatedAt: timestamp
+├── uid, email, businessName
+├── address, phone            (optional)
+├── invoiceNotes              (optional — default invoice footer)
+├── upiId                     (optional — powers the payment QR)
+├── billPrefix                (optional — e.g. "INV")
+├── taxEnabled, defaultTaxRate, gstin   (optional — GST config)
+└── createdAt
 
 products/{productId}
-├── userId: string
-├── name: string
-├── price: number
-├── imageUrl: string (optional)       # Cloudinary URL
-└── createdAt: timestamp
+├── userId, name, price
+├── imageUrl                  (optional)
+└── createdAt
 
 customers/{customerId}
-├── userId: string
-├── name: string
-├── phone: string (optional)
-├── email: string (optional)
-├── address: string (optional)
-└── createdAt: timestamp
+├── userId, name
+├── phone, email, address     (optional)
+└── createdAt
 
 bills/{billId}
-├── userId: string
-├── billNo: string
-├── billSeqNum: number
-├── customerName: string
-├── customerId: string (optional)
-├── customerPhone: string (optional)
+├── userId, billNo, billSeqNum
+├── customerName
+├── customerId, customerPhone (optional — links to a saved customer)
 ├── items: array<{ productId?, productName, quantity, price, total }>
-├── subtotal: number
-├── discount: number (optional)
-├── taxRate: number (optional)        # % applied
-├── tax: number                       # computed tax amount
-├── total: number
-├── paymentStatus: 'paid' | 'partial' | 'unpaid'
-├── amountPaid: number
-├── paymentMethod: 'cash'|'upi'|'card'|'bank'|'other' (optional)
-├── paidAt: timestamp (optional)
-├── createdAt: timestamp
-└── notes: string (optional)
+├── subtotal
+├── discount, taxRate         (optional — 0 when unused)
+├── tax, total
+├── paymentStatus             ('paid' | 'partial' | 'unpaid')
+├── amountPaid, paymentMethod, paidAt
+├── notes                     (optional)
+└── createdAt
 ```
 
-> The `customers` collection is queried by `userId` only (sorted client-side) to
-> avoid needing a composite index. Firestore rules should scope every collection
-> by the `userId` field, the same way `products` and `bills` are scoped above.
+## 🎨 Customization
 
-## 📚 Available Scripts
+**App name / branding** — the name **Bill Counter** appears in the header, auth pages, and browser tab. To rename, edit `src/components/shared/Header.tsx`, `src/pages/LoginPage.tsx`, `src/pages/RegisterPage.tsx`, and the `<title>` in `index.html`. The business name printed on invoices comes from **Settings** per user (falls back to `'Bill Counter'` in `BillDetailModal.tsx` and `utils/pdf.ts`).
+
+**Theme colors** — the corporate navy/blue palette lives in the shared classes in `src/index.css` (`.btn-primary`, `.card`, `.input-field`, action buttons). Adjust those tokens to re-theme globally.
+
+**Fonts** — imported in `src/index.css` via `@fontsource`; the `--font-display` token controls headings.
+
+**Payment QR** — invoices generate a real **UPI** scan-to-pay QR from the **UPI ID** set in Settings (`src/utils/upiQr.ts`). If no UPI ID is set, a decorative placeholder from `src/assets/qr.ts` is used instead — replace `INVOICE_QR` there with your own image (data URL / hosted URL / imported file) to customize it.
+
+## 📚 Scripts
 
 | Script | Purpose |
 |--------|---------|
-| `npm run dev` | Start Vite dev server (default port 5173) |
-| `npm run build` | Type-check (`tsc`) and build for production |
-| `npm run preview` | Preview the production build locally |
+| `npm run dev` | Start the dev server |
+| `npm run build` | Type-check (`tsc`) + production build |
+| `npm run preview` | Preview the production build |
 
 ## 🐛 Troubleshooting
 
-### `FirebaseError: auth/invalid-api-key` on startup
-- `.env.local` is missing or has placeholder values. Create it from `.env.example` and fill in real Firebase credentials.
-- Restart the dev server after editing `.env.local` (Vite only reads env vars at startup).
-
-### "Cannot find module 'firebase'"
-```bash
-npm install
-```
-
-### Port 5173 Already in Use
-Vite automatically uses the next available port, or specify one manually:
-```bash
-npm run dev -- --port 3000
-```
-
-### Firestore Permission Error
-- Confirm the Firestore Rules above are published
-- Ensure the user is logged in
-- Confirm each product/bill document has a `userId` field matching the signed-in user
+- **`auth/invalid-api-key` on startup** — `.env.local` missing/placeholder; fill real values and restart the dev server.
+- **Google sign-in fails** — enable the Google provider in Firebase Auth and add your domain to *Authorized domains*.
+- **`Missing or insufficient permissions`** — publish the Firestore rules above (including the `customers` block).
+- **`Cannot find module 'firebase'`** — run `npm install`.
+- **Port 5173 in use** — `npm run dev -- --port 3000`.
 
 ## 🚢 Deployment
 
-### Deploy to GitHub Pages (current setup)
-
-This project is configured for GitHub Pages:
-- `vite.config.ts` sets `base: '/Bill-Counter/'` (the repo name)
-- The app uses `HashRouter` so deep links / refreshes don't 404
-- `gh-pages` handles publishing via `predeploy` + `deploy` scripts
-
+**Firebase Hosting**
 ```bash
-# One-time: install the publisher (already a devDependency here)
-npm install --save-dev gh-pages
-
-# Build and publish to the gh-pages branch
-npm run deploy
-```
-
-Then, in the GitHub repo → **Settings → Pages** → Source: **Deploy from a branch** →
-Branch: **`gh-pages`** / `/ (root)`. The site goes live at
-`https://<username>.github.io/Bill-Counter/`.
-
-> **Also required for a working live site:**
-> - Firebase Console → **Authentication → Settings → Authorized domains** → add your
->   Pages domain (e.g. `<username>.github.io`), or login will fail.
-> - `VITE_FIREBASE_*` values are baked in at **build time** — build locally with a
->   valid `.env.local`, or add them as CI secrets if building via GitHub Actions.
-> - Cloudinary needs no setup for the live domain (unsigned uploads work anywhere).
-
-### Deploy to Firebase Hosting
-
-```bash
-# Install Firebase CLI
 npm install -g firebase-tools
-
-# Login
 firebase login
-
-# Initialize Firebase (set "dist" as the public directory)
-firebase init hosting
-
-# Build
+firebase init hosting     # set "dist" as the public directory
 npm run build
-
-# Deploy
 firebase deploy
 ```
 
-Your app will be live at `https://your-project.web.app`
-
-### Deploy to Vercel (Alternative)
-
-```bash
-npm i -g vercel
-vercel
-```
-
-Set the Firebase `VITE_*` environment variables in your hosting provider's dashboard.
-
-## 📧 Support
-
-For issues or questions:
-1. Check Firestore Rules in the Console
-2. Review the browser console for errors
-3. Verify Firebase project configuration
-4. Check `.env.local` file setup
+**Vercel** — `npm i -g vercel && vercel`. Set the `VITE_FIREBASE_*` env vars in your host's dashboard.
 
 ## 📄 License
 
