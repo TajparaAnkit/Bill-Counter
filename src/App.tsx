@@ -1,6 +1,7 @@
 // HashRouter avoids GitHub Pages 404s on refresh/deep-links (URLs use /#/...)
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './components/Auth/ProtectedRoute';
+import { UiTestPage } from './pages/UiTestPage';
 import { ConfirmProvider } from './components/ui/confirm';
 import { ToastContainer } from './components/shared/ToastContainer';
 import { LoginPage } from './pages/LoginPage';
@@ -24,6 +25,8 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         {/* Public shareable storefront — no auth required */}
         <Route path="/catalog/:userId" element={<CatalogPage />} />
+        {/* Dev-only UI harness used by the Playwright suite (never in production builds) */}
+        {import.meta.env.DEV && <Route path="/__ui-test" element={<UiTestPage />} />}
 
         {/* Protected Routes */}
         <Route

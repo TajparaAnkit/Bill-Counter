@@ -43,20 +43,20 @@ const tiles: Tile[] = [
 const TileView = ({ t }: { t: Tile }) => {
   if (t.shape === 'empty') return <div className="aspect-square" />;
 
-  const base = 'aspect-square rounded-2xl flex items-center justify-center overflow-hidden';
+  const base = 'aspect-square rounded-lg flex items-center justify-center overflow-hidden';
 
   switch (t.shape) {
     case 'square':
       return <div className={base} style={{ background: t.color }} />;
     case 'circle':
       return (
-        <div className={`${base} bg-white/70`}>
+        <div className={`${base} bg-white`}>
           <div className="w-2/3 h-2/3 rounded-full" style={{ background: t.color }} />
         </div>
       );
     case 'ring':
       return (
-        <div className={`${base} bg-white/70`}>
+        <div className={`${base} bg-white`}>
           <div
             className="w-2/3 h-2/3 rounded-full border-[10px]"
             style={{ borderColor: t.color }}
@@ -77,7 +77,7 @@ const TileView = ({ t }: { t: Tile }) => {
       );
     case 'triangle':
       return (
-        <div className={`${base} bg-white/70`}>
+        <div className={`${base} bg-white`}>
           <div
             style={{
               width: 0,
@@ -91,7 +91,7 @@ const TileView = ({ t }: { t: Tile }) => {
       );
     case 'dots':
       return (
-        <div className={`${base} bg-white/70`}>
+        <div className={`${base} bg-white`}>
           <div className="grid grid-cols-2 gap-2">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="w-3 h-3 rounded-full" style={{ background: t.color }} />
@@ -106,9 +106,9 @@ const TileView = ({ t }: { t: Tile }) => {
 
 export const AuthArt: React.FC = () => {
   return (
-    <div className="relative hidden lg:flex lg:w-1/2 flex-col justify-between overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/40 to-white p-12">
+    <div className="relative hidden lg:flex lg:w-1/2 flex-col justify-between overflow-hidden bg-gradient-to-br from-slate-50 via-brand-50/40 to-white p-12">
       {/* soft glows */}
-      <div className="pointer-events-none absolute -top-16 -right-16 w-80 h-80 rounded-full bg-blue-200/30 blur-3xl" />
+      <div className="pointer-events-none absolute -top-16 -right-16 w-80 h-80 rounded-full bg-brand-200/30 blur-3xl" />
       <div className="pointer-events-none absolute bottom-0 -left-20 w-80 h-80 rounded-full bg-amber-200/30 blur-3xl" />
 
       {/* Mosaic */}
@@ -122,7 +122,7 @@ export const AuthArt: React.FC = () => {
 
       {/* Headline */}
       <div className="relative z-10 max-w-md">
-        <h2 className="text-3xl font-extrabold tracking-tight text-slate-800 leading-tight font-display">
+        <h2 className="text-3xl font-bold text-slate-800 leading-tight">
           Bill smarter.<br />Get paid faster.
         </h2>
         <p className="mt-3 text-sm text-slate-500 leading-relaxed">

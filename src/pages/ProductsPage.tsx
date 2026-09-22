@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Layout } from '../components/shared/Layout';
 import { FaIcon } from '../components/shared/FaIcon';
 import { ProductTable } from '../components/Products/ProductTable';
@@ -33,6 +34,20 @@ export const ProductsPage: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [promoteProduct, setPromoteProduct] = useState<Product | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // `?new=1` (sidebar "Create" menu) opens the add form directly, then drops the param.
+  useEffect(() => {
+    if (searchParams.get('new')) {
+      setEditingProduct(null);
+      setIsFormOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('new');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
 
   const loadProductsList = async () => {
     if (!user) return;
@@ -56,9 +71,11 @@ export const ProductsPage: React.FC = () => {
   }, [user]);
 
   const handleAddOrEditProduct = async (
-    name: string, 
-    price: number, 
-    file: File | null
+    name: string,
+    price: number,
+    file: File | null,
+    hsn: string,
+    unit: string
   ) => {
     if (!user) return;
     try {
@@ -68,12 +85,14 @@ export const ProductsPage: React.FC = () => {
           editingProduct.id, 
           name, 
           price, 
-          editingProduct.imageUrl, 
-          file
+          editingProduct.imageUrl,
+          file,
+          hsn,
+          unit
         );
         toast.success('Product updated successfully');
       } else {
-        await addProduct(user.uid, name, price, file);
+        await addProduct(user.uid, name, price, file, hsn, unit);
         toast.success('Product added successfully');
       }
       loadProductsList();
@@ -107,14 +126,14 @@ export const ProductsPage: React.FC = () => {
   const handleBulkDelete = async (toDelete: Product[]) => {
     const ok = await confirm({
       title: `Delete ${toDelete.length} Product${toDelete.length > 1 ? 's' : ''}`,
-      message: `Are you sure you want to permanently delete ${toDelete.length} selected product${toDelete.length > 1 ? 's' : ''}? This action cannot be undone.`,
+      message: `Are you sure you want to permanently delete ${toDelete.length} selected item${toDelete.length > 1 ? 's' : ''}? This action cannot be undone.`,
       confirmText: 'Delete',
       variant: 'danger',
     });
     if (!ok) return;
     try {
       await bulkDeleteProducts(toDelete.map((p) => p.id));
-      toast.success(`Deleted ${toDelete.length} product${toDelete.length > 1 ? 's' : ''}`);
+      toast.success(`Deleted ${toDelete.length} item${toDelete.length > 1 ? 's' : ''}`);
       if (selectedProduct && toDelete.some((p) => p.id === selectedProduct.id)) {
         setSelectedProduct(null);
       }
@@ -152,11 +171,11 @@ export const ProductsPage: React.FC = () => {
 
   return (
     <Layout>
-      <div className="space-y-6 animate-slide-up">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-slate-100 pb-5">
+      <div className="space-y-4 animate-slide-up">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-slate-800 font-display">Products</h1>
-            <p className="text-slate-500 mt-1 text-sm font-medium">Manage your products and inventory pricing</p>
+            <h1 className="text-xl font-bold text-slate-800">Products</h1>
+            <p className="text-slate-500 text-xs">Products and pricing used on your invoices and catalog</p>
           </div>
           <div className="flex items-center space-x-3.5">
             <button
@@ -189,7 +208,7 @@ export const ProductsPage: React.FC = () => {
 
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <FaIcon icon="fa-solid fa-spinner" className="animate-spin text-blue-500" size={40} />
+            <FaIcon icon="fa-solid fa-spinner" className="animate-spin text-brand-500" size={40} />
             <p className="text-gray-500 font-medium">Loading inventory...</p>
           </div>
         ) : (

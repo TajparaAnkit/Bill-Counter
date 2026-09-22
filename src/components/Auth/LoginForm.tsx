@@ -55,8 +55,8 @@ export const LoginForm: React.FC = () => {
   };
 
   const inputBase =
-    'w-full pl-10 pr-4 py-2.5 rounded-xl border bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-4 transition-all duration-200';
-  const okRing = 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/10';
+    'w-full pl-10 pr-4 py-2.5 rounded-lg border bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all duration-200';
+  const okRing = 'border-slate-200 focus:border-brand-500 focus:ring-brand-500/20';
   const errRing = 'border-rose-400 focus:border-rose-400 focus:ring-rose-500/10';
 
   return (
@@ -95,7 +95,7 @@ export const LoginForm: React.FC = () => {
           <button
             type="button"
             onClick={handleForgotPassword}
-            className="text-xs font-semibold text-blue-700 hover:text-blue-800 hover:underline"
+            className="text-xs font-semibold text-brand-700 hover:text-brand-800 hover:underline"
           >
             Forgot password?
           </button>
@@ -135,7 +135,7 @@ export const LoginForm: React.FC = () => {
       <button
         type="submit"
         disabled={loading}
-        className="w-full py-3 bg-blue-800 hover:bg-blue-900 text-white font-semibold rounded-xl shadow-md shadow-blue-800/20 hover:shadow-lg active:translate-y-0.5 transition-all duration-200 disabled:opacity-60 disabled:pointer-events-none flex items-center justify-center gap-2 cursor-pointer"
+        className="w-full py-3 bg-brand-800 hover:bg-brand-900 text-white font-semibold rounded-lg hover:shadow-sm.5 transition-all duration-200 disabled:opacity-60 disabled:pointer-events-none flex items-center justify-center gap-2 cursor-pointer"
       >
         {loading ? (
           <>

@@ -1,10 +1,38 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/inter";
-@import "@fontsource-variable/plus-jakarta-sans";
+@import "@fontsource-variable/source-sans-3";
 
 @custom-variant dark (&:is(.dark *));
+
+/* =========================================================================
+   Theme tokens — flat, compact "billing software" look (myBillBook-inspired)
+   ========================================================================= */
+@theme {
+  /* Brand: indigo-violet */
+  --color-brand-50: #f3f2ff;
+  --color-brand-100: #e9e7ff;
+  --color-brand-200: #d4d0fe;
+  --color-brand-300: #b4acfb;
+  --color-brand-400: #9082f5;
+  --color-brand-500: #6f5ceb;
+  --color-brand-600: #5b4ee6;
+  --color-brand-700: #4b3ecf;
+  --color-brand-800: #3e33ad;
+  --color-brand-900: #332b89;
+  --color-brand-950: #1f1a52;
+
+  /* Accent: orange (sparingly, for the main call-to-action) */
+  --color-accent-50: #fff4ec;
+  --color-accent-100: #ffe5d2;
+  --color-accent-500: #e8620e;
+  --color-accent-600: #d2560b;
+  --color-accent-700: #b3480a;
+
+  --font-sans: 'Source Sans 3 Variable', 'Source Sans Pro', system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-sans);
+  --font-heading: var(--font-sans);
+}
 
 @layer components {
   /* Knowledge Base article content (list/code styles Tailwind's reset strips) */
@@ -25,153 +53,134 @@
     @apply bg-slate-100 text-slate-700 rounded px-1.5 py-0.5 text-[0.8125rem] font-mono;
   }
   .kb-article pre {
-    @apply bg-slate-900 text-slate-100 rounded-lg p-3 my-3 text-xs font-mono overflow-x-auto whitespace-pre;
+    @apply bg-slate-900 text-slate-100 rounded-md p-3 my-3 text-xs font-mono overflow-x-auto whitespace-pre;
   }
   .kb-article pre code {
     @apply bg-transparent text-inherit p-0;
   }
   .kb-article .tip {
-    @apply bg-blue-50 text-blue-800 rounded-lg px-3 py-2 text-[0.8125rem] mt-3 mb-0;
+    @apply bg-brand-50 text-brand-800 rounded-md px-3 py-2 text-[0.8125rem] mt-3 mb-0;
   }
   .kb-article a {
-    @apply text-blue-600 underline;
+    @apply text-brand-600 underline;
   }
 
   .trading-card {
-    @apply bg-white/95 border border-slate-200 rounded-xl shadow-sm transition-all duration-300 ease-out;
+    @apply bg-white border border-slate-200 rounded-lg transition-colors duration-200;
     min-height: 64px;
   }
   .trading-card:hover {
-    @apply bg-white border-blue-200 shadow-md;
-    transform: translateY(-2px);
+    @apply border-brand-300;
   }
 
   .metric-card {
-    @apply bg-white/95 border border-slate-200 rounded-xl shadow-sm p-4;
+    @apply bg-white border border-slate-200 rounded-lg p-4;
     min-height: 96px;
   }
-
   .metric-card .label {
     @apply text-sm text-slate-600;
   }
-
   .metric-card .value {
-    @apply text-2xl font-extrabold text-slate-900 mt-2;
+    @apply text-2xl font-bold text-slate-900 mt-2;
   }
-
   .metric-icon {
-    @apply rounded-md p-2 bg-white/60 border border-slate-100 shadow-sm;
+    @apply rounded-md p-2 bg-brand-50 text-brand-700 border border-brand-100;
   }
 
-  /* Trading action buttons */
   .action-btn {
-    @apply flex items-center gap-3 text-white font-bold rounded-3xl transition-all duration-300;
-    height: 56px;
-    padding-left: 18px;
-    padding-right: 18px;
+    @apply flex items-center gap-3 text-white font-semibold rounded-lg transition-colors duration-200;
+    height: 52px;
+    padding-left: 16px;
+    padding-right: 16px;
   }
-
   .action-icon {
-    @apply rounded-2xl bg-white/10 p-3 flex items-center justify-center;
+    @apply rounded-md bg-white/15 p-2.5 flex items-center justify-center;
   }
-
   .action-new {
-    background: linear-gradient(90deg, #1e3a8a 0%, #2563eb 100%);
+    background: #5b4ee6;
   }
-
+  .action-new:hover {
+    background: #4b3ecf;
+  }
   .action-add {
-    background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+    background: #e8620e;
   }
-
+  .action-add:hover {
+    background: #d2560b;
+  }
   .action-dashboard {
-    background: linear-gradient(90deg, #334155 0%, #0f172a 100%);
+    background: #334155;
+  }
+  .action-dashboard:hover {
+    background: #1e293b;
   }
 
   .recent-card {
-    @apply bg-white/95 border border-slate-200 rounded-xl shadow-sm p-6;
+    @apply bg-white border border-slate-200 rounded-lg p-5;
     min-height: 320px;
   }
-
   .recent-card-header {
-    @apply flex items-center justify-between mb-5;
+    @apply flex items-center justify-between mb-4;
   }
-
   .recent-empty {
     @apply flex flex-col items-center justify-center text-center gap-4 text-slate-400;
     min-height: 220px;
   }
 }
 
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.slide-in-up {
-  animation: slideInUp 0.6s ease-out forwards;
-}
-
 /*
  * NOTE: Do NOT add an unlayered `* { margin:0; padding:0 }` reset here.
  * Tailwind v4 keeps all its utilities inside @layer, and unlayered CSS
  * outranks any layered rule — so a bare `*` reset silently overrides every
- * margin/padding utility (mx-auto, px-*, p-*, space-y-*), which breaks
- * centering and spacing app-wide. Tailwind's Preflight already resets
- * margins and sets box-sizing: border-box, so no manual reset is needed.
+ * margin/padding utility, which breaks centering and spacing app-wide.
  */
 @layer base {
   html {
     scroll-behavior: smooth;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-sans);
+    font-size: 15px;
   }
-
   body {
-    background-color: #f8fafc;
+    background-color: #f5f6fa;
     color: #1e293b;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply px-4 py-2 bg-gradient-to-r from-blue-800 to-blue-600 text-white font-semibold rounded-xl hover:from-blue-900 hover:to-blue-700 shadow-md shadow-blue-200/50 hover:shadow-lg hover:shadow-blue-300/50 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 ease-out cursor-pointer;
+    @apply px-4 py-2 bg-brand-600 text-white font-semibold rounded-md hover:bg-brand-700 active:bg-brand-800 transition-colors duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed;
   }
-
   .btn-secondary {
-    @apply px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl hover:-translate-y-0.5 active:translate-y-0 shadow-xs hover:shadow-sm transition-all duration-300 ease-out cursor-pointer;
+    @apply px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold rounded-md transition-colors duration-200 cursor-pointer disabled:opacity-60;
   }
-
+  .btn-accent {
+    @apply px-4 py-2 bg-accent-500 text-white font-semibold rounded-md hover:bg-accent-600 transition-colors duration-200 cursor-pointer;
+  }
   .card {
-    @apply bg-white rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] p-6 transition-all duration-300 ease-out hover:shadow-[0_12px_40px_rgba(37,99,235,0.08)] hover:border-blue-500/10 hover:-translate-y-0.5;
+    @apply bg-white rounded-lg border border-slate-200 p-5;
   }
-
   .card-glass {
-    @apply bg-white/70 backdrop-blur-md border border-white/60 shadow-[0_8px_32px_rgba(30,41,59,0.08)] p-6 transition-all duration-300 ease-out hover:bg-white/80 hover:shadow-[0_12px_40px_rgba(37,99,235,0.06)] hover:border-blue-500/20 hover:-translate-y-0.5;
+    @apply bg-white rounded-lg border border-slate-200 p-5;
   }
-
   .input-field {
-    @apply w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 focus:bg-white text-slate-800 placeholder-slate-400 transition-all duration-300;
+    @apply w-full px-3 py-2.5 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 text-slate-800 placeholder-slate-400 transition-colors duration-200;
   }
 }
 
 @keyframes slideInUp {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
-
-.animate-slide-up {
-  animation: slideInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.animate-slide-up,
+.slide-in-up {
+  animation: slideInUp 0.25s ease-out forwards;
 }
 
 /* Custom Scrollbar Styles */
@@ -190,10 +199,8 @@
   background: #94a3b8;
 }
 
+/* shadcn/ui token bridge */
 @theme inline {
-  --font-display: 'Plus Jakarta Sans Variable', 'Inter Variable', system-ui, sans-serif;
-  --font-heading: var(--font-display);
-  --font-sans: 'Inter Variable', system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -212,7 +219,6 @@
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -241,24 +247,23 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --primary: #5b4ee6;
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: #5b4ee6;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 0.5rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -276,13 +281,12 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
+  --primary: #8e80f5;
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
@@ -313,9 +317,8 @@
   html {
     @apply font-sans;
   }
-  /* Modern corporate display font for all headings */
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display);
-    letter-spacing: -0.01em;
+    font-family: var(--font-sans);
+    letter-spacing: -0.005em;
   }
 }

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Select } from './Select';
 import { FaIcon } from '../shared/FaIcon';
 
 interface PaginationProps {
@@ -27,7 +28,7 @@ export const Pagination: React.FC<PaginationProps> = ({
     'w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white';
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 border-t border-slate-100 text-sm">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 border-t border-slate-200 text-sm">
       <p className="text-xs text-slate-400 order-last sm:order-first">
         {total} {itemLabel}
       </p>
@@ -37,17 +38,15 @@ export const Pagination: React.FC<PaginationProps> = ({
         {onPageSizeChange && (
           <div className="flex items-center gap-2">
             <span className="text-slate-500">Rows per page</span>
-            <select
-              value={pageSize}
-              onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              className="h-8 pl-2.5 pr-7 rounded-md border border-slate-200 bg-white text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 cursor-pointer"
-            >
-              {pageSizeOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
+            <Select
+              size="sm"
+              align="end"
+              aria-label="Rows per page"
+              options={pageSizeOptions.map((opt) => String(opt))}
+              value={String(pageSize)}
+              onChange={(v) => onPageSizeChange(Number(v))}
+              className="w-20"
+            />
           </div>
         )}
 

@@ -1,17 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Layout } from '../components/shared/Layout';
 import { FaIcon } from '../components/shared/FaIcon';
 import { CustomerFormModal } from '../components/Customers/CustomerFormModal';
 import { useConfirm } from '../components/ui/confirm';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
-import { getCustomers, addCustomer, updateCustomer, deleteCustomer } from '../services/db';
+import { getCustomers, addCustomer, updateCustomer, deleteCustomer, CustomerInput } from '../services/db';
 import { Customer } from '../types';
 import { Pagination } from '../components/ui/Pagination';
 
 const avatarPalette = [
-  'from-blue-600 to-indigo-600',
-  'from-sky-500 to-blue-500',
+  'from-brand-600 to-brand-600',
+  'from-sky-500 to-brand-500',
   'from-violet-500 to-purple-500',
   'from-amber-500 to-orange-500',
   'from-rose-500 to-pink-500',
@@ -29,6 +30,20 @@ export const CustomersPage: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // `?new=1` (sidebar "Create" menu) opens the add form directly, then drops the param.
+  useEffect(() => {
+    if (searchParams.get('new')) {
+      setEditing(null);
+      setIsFormOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('new');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
 
   const loadCustomers = async () => {
     if (!user) return;
@@ -46,12 +61,7 @@ export const CustomersPage: React.FC = () => {
     if (user) loadCustomers();
   }, [user]);
 
-  const handleSubmit = async (data: {
-    name: string;
-    phone?: string;
-    email?: string;
-    address?: string;
-  }) => {
+  const handleSubmit = async (data: CustomerInput) => {
     if (!user) return;
     try {
       if (editing) {
@@ -92,7 +102,8 @@ export const CustomersPage: React.FC = () => {
       (c) =>
         c.name?.toLowerCase().includes(term) ||
         c.phone?.toLowerCase().includes(term) ||
-        c.email?.toLowerCase().includes(term)
+        c.email?.toLowerCase().includes(term) ||
+        c.gstin?.toLowerCase().includes(term)
     );
   }, [customers, search]);
 
@@ -118,16 +129,11 @@ export const CustomersPage: React.FC = () => {
 
   return (
     <Layout>
-      <div className="space-y-6 animate-slide-up">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-slate-100 pb-5">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-700 to-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
-              <FaIcon icon="fa-solid fa-users" size={20} className="text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-extrabold tracking-tight text-slate-800 font-display">Customers</h1>
-              <p className="text-slate-500 mt-0.5 text-sm font-medium">Your customer directory and contacts</p>
-            </div>
+      <div className="space-y-4 animate-slide-up">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+          <div>
+            <h1 className="text-xl font-bold text-slate-800">Customers</h1>
+            <p className="text-slate-500 text-xs">Customers and suppliers with GSTIN, addresses and credit terms</p>
           </div>
           <button
             onClick={() => {
@@ -143,12 +149,12 @@ export const CustomersPage: React.FC = () => {
 
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <FaIcon icon="fa-solid fa-spinner" className="animate-spin text-blue-600" size={40} />
+            <FaIcon icon="fa-solid fa-spinner" className="animate-spin text-brand-600" size={40} />
             <p className="text-slate-500 font-semibold">Loading customers...</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-slate-100/80 overflow-hidden">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border-b border-slate-100">
+          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border-b border-slate-200">
               <div className="flex items-center gap-2">
                 <h2 className="font-bold text-slate-800">All Customers</h2>
                 <span className="bg-slate-100 text-slate-500 text-xs font-bold px-2 py-0.5 rounded-full">
@@ -163,8 +169,8 @@ export const CustomersPage: React.FC = () => {
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search name, phone or email..."
-                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 focus:bg-white transition-all duration-300"
+                  placeholder="Search name, phone, email or GSTIN..."
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 focus:bg-white transition-all duration-300"
                 />
               </div>
             </div>
@@ -172,17 +178,19 @@ export const CustomersPage: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/60 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <tr className="bg-slate-50/60 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
                     <th className="p-4">Name</th>
+                    <th className="p-4">Type</th>
                     <th className="p-4">Phone</th>
                     <th className="p-4">Email</th>
+                    <th className="p-4">GSTIN</th>
                     <th className="p-4 text-center w-28">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filtered.length > 0 ? (
                     pagedCustomers.map((c) => (
-                      <tr key={c.id} className="hover:bg-blue-50/30 transition-colors">
+                      <tr key={c.id} className="hover:bg-brand-50/30 transition-colors">
                         <td className="p-4">
                           <div className="flex items-center space-x-3">
                             <span className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarColor(c.name)} text-white text-xs font-bold flex items-center justify-center shrink-0 shadow-sm`}>
@@ -191,8 +199,14 @@ export const CustomersPage: React.FC = () => {
                             <span className="font-bold text-slate-700">{c.name}</span>
                           </div>
                         </td>
+                        <td className="p-4">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${c.partyType === 'supplier' ? 'bg-violet-50 text-violet-700 border border-violet-200' : 'bg-brand-50 text-brand-700 border border-brand-200'}`}>
+                            {c.partyType === 'supplier' ? 'Supplier' : 'Customer'}
+                          </span>
+                        </td>
                         <td className="p-4 text-slate-600 text-sm font-medium">{c.phone || '—'}</td>
                         <td className="p-4 text-slate-500 text-sm">{c.email || '—'}</td>
+                        <td className="p-4 text-slate-500 text-xs font-mono">{c.gstin || '—'}</td>
                         <td className="p-4">
                           <div className="flex justify-center gap-1.5">
                             <button
@@ -200,7 +214,7 @@ export const CustomersPage: React.FC = () => {
                                 setEditing(c);
                                 setIsFormOpen(true);
                               }}
-                              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
                               title="Edit"
                             >
                               <FaIcon icon="fa-solid fa-pen" size={14} />
@@ -218,9 +232,9 @@ export const CustomersPage: React.FC = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={4} className="px-6 py-20">
+                      <td colSpan={6} className="px-6 py-20">
                         <div className="flex flex-col items-center justify-center text-center space-y-4">
-                          <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center">
+                          <div className="w-16 h-16 rounded-lg bg-slate-50 flex items-center justify-center">
                             <FaIcon
                               icon={search ? 'fa-solid fa-magnifying-glass' : 'fa-solid fa-user-plus'}
                               size={26}

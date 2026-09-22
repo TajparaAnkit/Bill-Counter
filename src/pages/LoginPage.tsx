@@ -11,11 +11,11 @@ export const LoginPage: React.FC = () => {
         <div className="w-full max-w-md mx-auto">
           {/* Brand */}
           <div className="flex items-center gap-3 mb-10">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-800 to-blue-600 flex items-center justify-center shadow-md shadow-blue-500/20">
-              <span className="text-white font-extrabold text-sm">BC</span>
+            <div className="w-10 h-10 rounded-lg bg-brand-600 flex items-center justify-center">
+              <span className="text-white font-bold text-sm">BC</span>
             </div>
             <div>
-              <span className="block text-lg font-extrabold tracking-tight text-slate-800 font-display leading-none">
+              <span className="block text-lg font-bold text-slate-800 leading-none">
                 Bill Counter
               </span>
               <span className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mt-1">
@@ -24,7 +24,7 @@ export const LoginPage: React.FC = () => {
             </div>
           </div>
 
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-800 font-display">Welcome back</h1>
+          <h1 className="text-3xl font-bold text-slate-800">Welcome back</h1>
           <p className="mt-2 text-sm text-slate-500">Log in to manage your invoices, products and customers.</p>
 
           <div className="mt-8 space-y-5">
@@ -41,7 +41,7 @@ export const LoginPage: React.FC = () => {
 
           <p className="mt-8 text-center text-sm text-slate-500">
             Not registered?{' '}
-            <Link to="/register" className="font-bold text-blue-700 hover:text-blue-800 hover:underline">
+            <Link to="/register" className="font-bold text-brand-700 hover:text-brand-800 hover:underline">
               Create an account
             </Link>
           </p>
