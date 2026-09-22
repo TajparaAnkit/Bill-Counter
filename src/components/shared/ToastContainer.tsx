@@ -19,9 +19,9 @@ const getToastStyles = (type: ToastType) => {
       icon: <FaIcon icon="fa-solid fa-triangle-exclamation" className="w-5 h-5 text-yellow-600" />,
     },
     info: {
-      bg: 'bg-blue-50',
-      border: 'border-blue-200',
-      icon: <FaIcon icon="fa-solid fa-circle-info" className="w-5 h-5 text-blue-600" />,
+      bg: 'bg-brand-50',
+      border: 'border-brand-200',
+      icon: <FaIcon icon="fa-solid fa-circle-info" className="w-5 h-5 text-brand-600" />,
     },
   };
   return styles[type];
@@ -32,7 +32,7 @@ const getTextStyles = (type: ToastType) => {
     success: 'text-green-800',
     error: 'text-red-800',
     warning: 'text-yellow-800',
-    info: 'text-blue-800',
+    info: 'text-brand-800',
   };
   return styles[type];
 };

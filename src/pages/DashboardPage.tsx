@@ -139,7 +139,7 @@ export const DashboardPage: React.FC = () => {
     return (
       <Layout>
         <div className="flex flex-col items-center justify-center py-40 space-y-4">
-          <FaIcon icon="fa-solid fa-spinner" className="animate-spin text-blue-600" size={40} />
+          <FaIcon icon="fa-solid fa-spinner" className="animate-spin text-brand-600" size={40} />
           <p className="text-slate-500 font-semibold">Loading dashboard overview...</p>
         </div>
       </Layout>
@@ -148,11 +148,12 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <Layout>
-      <div className="space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="space-y-6">
+        <h1 className="text-xl font-bold text-slate-800">Dashboard</h1>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="metric-card slide-in-up relative" style={{ animationDelay: '0s' }}>
             <div className="absolute top-3 right-3 metric-icon">
-              <FaIcon icon="fa-solid fa-box" size={16} className="text-blue-600" />
+              <FaIcon icon="fa-solid fa-box" size={16} className="text-brand-600" />
             </div>
             <div className="label">TOTAL PRODUCTS</div>
             <div className="value">{totalProducts}</div>
@@ -196,7 +197,7 @@ export const DashboardPage: React.FC = () => {
             <div className="trading-card p-5">
               <div className="flex items-baseline justify-between mb-1">
                 <h3 className="text-lg font-bold">LAST 7 DAYS</h3>
-                <span className="text-xs font-bold text-blue-700">₹{sevenDayTotal.toFixed(0)}</span>
+                <span className="text-xs font-bold text-brand-700">₹{sevenDayTotal.toFixed(0)}</span>
               </div>
               <p className="text-xs text-slate-400 mb-5">Daily sales trend</p>
               <div className="flex items-end justify-between gap-2">
@@ -204,7 +205,7 @@ export const DashboardPage: React.FC = () => {
                   <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
                     <div className="w-full h-28 flex items-end justify-center">
                       <div
-                        className="w-6 rounded-t-lg bg-gradient-to-t from-blue-700 to-blue-500 transition-all duration-300 group-hover:from-blue-800 group-hover:to-blue-600"
+                        className="w-6 rounded-t-lg bg-brand-600 transition-all duration-300 hover:bg-brand-700"
                         style={{ height: `${Math.max(4, (d.total / maxDay) * 112)}px` }}
                         title={`₹${d.total.toFixed(0)}`}
                       />
@@ -246,10 +247,10 @@ export const DashboardPage: React.FC = () => {
                   recentBills.map((bill) => (
                     <div
                       key={bill.id}
-                      className="flex items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-200"
+                      className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 transition hover:border-brand-200"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="grid h-12 w-12 place-items-center rounded-3xl bg-blue-50 text-blue-700">
+                        <div className="grid h-12 w-12 place-items-center rounded-lg bg-brand-50 text-brand-700">
                           <FaIcon icon="fa-solid fa-file-invoice" size={18} />
                         </div>
                         <div>
@@ -264,7 +265,7 @@ export const DashboardPage: React.FC = () => {
                             setSelectedBill(bill);
                             setIsDetailOpen(true);
                           }}
-                          className="rounded-2xl border border-slate-200 bg-white p-2 text-slate-500 transition hover:text-blue-700"
+                          className="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 transition hover:text-brand-700"
                           title="View Invoice"
                         >
                           <FaIcon icon="fa-solid fa-eye" size={16} />
@@ -292,11 +293,11 @@ export const DashboardPage: React.FC = () => {
                     topProductsList.map((item) => {
                       const matchingProd = products.find(p => p.name === item.name);
                       return (
-                        <div key={item.name} className="flex items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-3">
+                        <div key={item.name} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-11 w-11 items-center justify-center rounded-3xl bg-white border border-slate-200">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white border border-slate-200">
                               {matchingProd?.imageUrl ? (
-                                <img src={matchingProd.imageUrl} alt={item.name} className="h-10 w-10 object-cover rounded-2xl" />
+                                <img src={matchingProd.imageUrl} alt={item.name} className="h-10 w-10 object-cover rounded-lg" />
                               ) : (
                                 <span className="text-sm">🧶</span>
                               )}
@@ -306,7 +307,7 @@ export const DashboardPage: React.FC = () => {
                               <p className="text-xs text-slate-500">{item.qty} sold</p>
                             </div>
                           </div>
-                          <p className="text-sm font-extrabold text-slate-950">₹{item.totalSales.toFixed(0)}</p>
+                          <p className="text-sm font-bold text-slate-950">₹{item.totalSales.toFixed(0)}</p>
                         </div>
                       );
                     })

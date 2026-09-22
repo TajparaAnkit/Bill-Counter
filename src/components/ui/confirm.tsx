@@ -54,9 +54,9 @@ const VARIANTS = {
   },
   primary: {
     icon: 'fa-solid fa-circle-question',
-    iconWrap: 'bg-blue-50 text-blue-500',
-    confirmBtn: 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm',
-    ring: 'focus:ring-blue-500/20 focus:border-blue-400',
+    iconWrap: 'bg-brand-50 text-brand-500',
+    confirmBtn: 'bg-brand-600 hover:bg-brand-700 text-white shadow-sm',
+    ring: 'focus:ring-brand-500/20 focus:border-brand-400',
   },
 };
 
@@ -66,12 +66,12 @@ const Backdrop: React.FC<{ onClose: () => void; children: React.ReactNode }> = (
 }) =>
   createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in duration-200">
+      <div className="w-full max-w-md rounded-lg bg-white shadow-2xl animate-in fade-in zoom-in duration-200">
         {children}
       </div>
     </div>,
@@ -190,7 +190,7 @@ export const ConfirmProvider: React.FC<{ children: React.ReactNode }> = ({ child
                     onChange={(e) => setTyped(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && canConfirm && closeConfirm(true)}
                     placeholder={`Type ${confirmOpts.requireText} to confirm`}
-                    className={`w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-4 focus:bg-white transition-all ${cVariant.ring}`}
+                    className={`w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:bg-white transition-all ${cVariant.ring}`}
                   />
                 </div>
               )}
@@ -199,14 +199,14 @@ export const ConfirmProvider: React.FC<{ children: React.ReactNode }> = ({ child
             <div className="flex justify-center sm:justify-end gap-3 px-6 pb-6">
               <button
                 onClick={() => closeConfirm(false)}
-                className="px-4 py-2 rounded-xl font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors"
+                className="px-4 py-2 rounded-lg font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors"
               >
                 {confirmOpts.cancelText || 'Cancel'}
               </button>
               <button
                 onClick={() => closeConfirm(true)}
                 disabled={!canConfirm}
-                className={`px-4 py-2 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${cVariant.confirmBtn}`}
+                className={`px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${cVariant.confirmBtn}`}
               >
                 {confirmOpts.confirmText || 'Confirm'}
               </button>
@@ -257,7 +257,7 @@ export const ConfirmProvider: React.FC<{ children: React.ReactNode }> = ({ child
                   }}
                   onKeyDown={(e) => e.key === 'Enter' && closePrompt(inputValue)}
                   placeholder={promptOpts.placeholder}
-                  className={`w-full ${promptOpts.prefix ? 'pl-8' : 'pl-4'} pr-4 py-2.5 bg-slate-50 border rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-4 focus:bg-white transition-all ${
+                  className={`w-full ${promptOpts.prefix ? 'pl-8' : 'pl-4'} pr-4 py-2.5 bg-slate-50 border rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:bg-white transition-all ${
                     inputError ? 'border-rose-300 focus:ring-rose-500/20 focus:border-rose-400' : `border-slate-200 ${pVariant.ring}`
                   }`}
                 />
@@ -267,13 +267,13 @@ export const ConfirmProvider: React.FC<{ children: React.ReactNode }> = ({ child
               <div className="flex justify-end gap-3 mt-6">
                 <button
                   onClick={() => closePrompt(null)}
-                  className="px-4 py-2 rounded-xl font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors"
+                  className="px-4 py-2 rounded-lg font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors"
                 >
                   {promptOpts.cancelText || 'Cancel'}
                 </button>
                 <button
                   onClick={() => closePrompt(inputValue)}
-                  className={`px-4 py-2 rounded-xl font-semibold transition-colors ${pVariant.confirmBtn}`}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-colors ${pVariant.confirmBtn}`}
                 >
                   {promptOpts.confirmText || 'Save'}
                 </button>

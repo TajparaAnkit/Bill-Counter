@@ -3,11 +3,13 @@ import { createPortal } from 'react-dom';
 import { FaIcon } from '../shared/FaIcon';
 import { Product } from '../../types';
 import { useToast } from '../../hooks/useToast';
+import { Select } from '../ui/Select';
+import { UNITS } from '../../utils/tax';
 
 interface ProductFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (name: string, price: number, file: File | null) => Promise<void>;
+  onSubmit: (name: string, price: number, file: File | null, hsn: string, unit: string) => Promise<void>;
   product?: Product | null;
 }
 
@@ -19,6 +21,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
+  const [hsn, setHsn] = useState('');
+  const [unit, setUnit] = useState('PCS');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,11 +32,15 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     if (product) {
       setName(product.name);
       setPrice(product.price.toString());
+      setHsn(product.hsn || '');
+      setUnit(product.unit || 'PCS');
       setImagePreview(product.imageUrl || '');
       setImageFile(null);
     } else {
       setName('');
       setPrice('');
+      setHsn('');
+      setUnit('PCS');
       setImagePreview('');
       setImageFile(null);
     }
@@ -66,7 +74,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
     try {
       setIsSubmitting(true);
-      await onSubmit(name.trim(), numPrice, imageFile);
+      await onSubmit(name.trim(), numPrice, imageFile, hsn.trim(), unit);
       onClose();
     } catch (err) {
       console.error(err);
@@ -76,9 +84,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="flex flex-col bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-        <div className="shrink-0 flex justify-between items-center bg-gray-50 border-b border-gray-150 p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+      <div className="flex flex-col bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+        <div className="shrink-0 flex justify-between items-center bg-gray-50 border-b border-slate-200 p-4">
           <div>
             <h2 className="text-lg font-bold text-gray-800">
               {product ? 'Edit Product' : 'Add Product'}
@@ -108,19 +116,40 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             />
           </div>
 
+          <div className="grid grid-cols-[1fr_9rem] gap-3">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Price (₹) *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="0.00"
+                className="input-field"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Unit</label>
+              <Select aria-label="Unit" options={UNITS} value={unit} onChange={setUnit} className="py-2.5" />
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Price (₹) *
+              HSN / SAC Code <span className="font-normal text-gray-400">(optional)</span>
             </label>
             <input
-              type="number"
-              step="0.01"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder="0.00"
-              className="input-field"
-              required
+              type="text"
+              inputMode="numeric"
+              value={hsn}
+              onChange={(e) => setHsn(e.target.value.replace(/[^0-9A-Za-z]/g, '').slice(0, 8))}
+              placeholder="e.g. 3814"
+              className="input-field font-mono"
             />
+            <p className="mt-1 text-xs text-gray-400">Prefilled on invoice lines when this product is picked. Leave blank if not applicable.</p>
           </div>
 
           <div>
@@ -128,9 +157,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               Product Image
             </label>
             <div className="flex items-center space-x-4">
-              <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-4 cursor-pointer hover:border-blue-500 hover:bg-blue-50/50 transition-all w-32 h-32 text-center group">
-                <FaIcon icon="fa-solid fa-upload" size={24} className="text-gray-400 group-hover:text-blue-600 transition-colors mb-1" />
-                <span className="text-xs text-gray-500 font-medium group-hover:text-blue-600 transition-colors">
+              <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-4 cursor-pointer hover:border-brand-500 hover:bg-brand-50/50 transition-all w-32 h-32 text-center group">
+                <FaIcon icon="fa-solid fa-upload" size={24} className="text-gray-400 group-hover:text-brand-600 transition-colors mb-1" />
+                <span className="text-xs text-gray-500 font-medium group-hover:text-brand-600 transition-colors">
                   Upload file
                 </span>
                 <input
@@ -142,7 +171,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               </label>
 
               {imagePreview ? (
-                <div className="relative w-32 h-32 rounded-xl overflow-hidden border border-gray-150">
+                <div className="relative w-32 h-32 rounded-lg overflow-hidden border border-slate-200">
                   <img
                     src={imagePreview}
                     alt="Preview"
@@ -160,14 +189,14 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                   </button>
                 </div>
               ) : (
-                <div className="w-32 h-32 rounded-xl border border-dashed border-gray-200 bg-gray-50 flex items-center justify-center text-xs text-gray-400 font-medium">
+                <div className="w-32 h-32 rounded-lg border border-dashed border-gray-200 bg-gray-50 flex items-center justify-center text-xs text-gray-400 font-medium">
                   No preview
                 </div>
               )}
             </div>
           </div>
 
-          <div className="flex flex-col-reverse sm:flex-row gap-3 border-t border-gray-150 pt-4">
+          <div className="flex flex-col-reverse sm:flex-row gap-3 border-t border-slate-200 pt-4">
             <button
               type="button"
               onClick={onClose}

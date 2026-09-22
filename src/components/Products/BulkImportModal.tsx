@@ -9,6 +9,8 @@ interface ImportItem {
   name: string;
   price: number;
   imageUrl?: string;
+  hsn?: string;
+  unit?: string;
 }
 
 // Carries the filename pulled from the sheet's local path, used only to match
@@ -66,6 +68,8 @@ const buildParsedItems = (rows: Array<Record<string, unknown>>): ParsedRow[] => 
     const name = String(findHeaderValue(row, ['name', 'productname', 'title']) || '').trim();
     const priceValue = parsePrice(findHeaderValue(row, ['price', 'amount', 'unitprice', 'cost']));
     const imageValue = String(findHeaderValue(row, ['image', 'imageurl', 'img', 'photo', 'picture', 'link']) || '').trim();
+    const hsn = String(findHeaderValue(row, ['hsn', 'hsncode', 'hsn/sac', 'sac', 'saccode']) || '').trim();
+    const unit = String(findHeaderValue(row, ['unit', 'uom', 'units']) || '').trim().toUpperCase();
 
     if (!name) return;
     if (!priceValue || priceValue <= 0) return;
@@ -80,6 +84,8 @@ const buildParsedItems = (rows: Array<Record<string, unknown>>): ParsedRow[] => 
       name,
       price: priceValue,
       imageUrl,
+      hsn: hsn || undefined,
+      unit: unit || undefined,
       imageFileName,
     });
   });
@@ -201,14 +207,16 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
       }
 
       // Drop the internal imageFileName field — onImport only wants name/price/imageUrl.
-      const itemsToImport: ImportItem[] = parsedItems.map(({ name, price, imageUrl }) => ({
+      const itemsToImport: ImportItem[] = parsedItems.map(({ name, price, imageUrl, hsn, unit }) => ({
         name,
         price,
         imageUrl,
+        hsn,
+        unit,
       }));
 
       await onImport(itemsToImport);
-      toast.success(`Successfully imported ${parsedItems.length} product(s).`);
+      toast.success(`Successfully imported ${parsedItems.length} item(s).`);
       setSelectedImages([]);
       onClose();
     } catch (err) {
@@ -222,12 +230,12 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="flex flex-col bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-        <div className="shrink-0 flex justify-between items-center bg-gray-50 border-b border-gray-150 p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+      <div className="flex flex-col bg-white rounded-lg w-full max-w-lg max-h-[90vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+        <div className="shrink-0 flex justify-between items-center bg-gray-50 border-b border-slate-200 p-4">
           <div>
             <h2 className="text-lg font-bold text-gray-800">Bulk Import Products</h2>
-            <p className="text-sm text-slate-500 mt-0.5">Import multiple items instantly</p>
+            <p className="text-sm text-slate-500 mt-0.5">Import multiple products instantly</p>
           </div>
           <button
             onClick={onClose}
@@ -239,7 +247,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
 
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {/* Image Picker Section */}
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-3">
               <FaIcon icon="fa-solid fa-image" size={18} className="text-green-600" />
               <h3 className="font-semibold text-green-800 text-sm">Optional: Upload Product Images</h3>
@@ -275,19 +283,19 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
             )}
           </div>
 
-          <div className="bg-blue-50 text-blue-800 p-3.5 rounded-xl text-xs flex items-start space-x-2">
+          <div className="bg-brand-50 text-brand-800 p-3.5 rounded-lg text-xs flex items-start space-x-2">
             <FaIcon icon="fa-solid fa-circle-info" size={16} className="mt-0.5 shrink-0" />
             <div>
-              <span className="font-bold">Supported format:</span> A sheet with columns named <span className="font-semibold">name</span>, <span className="font-semibold">price</span>, and optionally <span className="font-semibold">image</span> (an http/https URL — local file paths are ignored).
+              <span className="font-bold">Supported format:</span> A sheet with columns named <span className="font-semibold">name</span>, <span className="font-semibold">price</span>, and optionally <span className="font-semibold">hsn</span>, <span className="font-semibold">unit</span> and <span className="font-semibold">image</span> (an http/https URL — local file paths are ignored).
               <pre className="mt-1 bg-white/50 p-2 rounded text-[10px] font-mono select-all">
-{`name,price,image
-T-Shirt,450,https://example.com/tshirt.jpg
-Coffee Mug,299,`}
+{`name,price,hsn,unit,image
+T-Shirt,450,6109,PCS,https://example.com/tshirt.jpg
+Coffee Mug,299,,PCS,`}
               </pre>
             </div>
           </div>
 
-          <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-2xl p-10 cursor-pointer hover:border-blue-500 hover:bg-blue-50/30 transition-all text-center">
+          <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-10 cursor-pointer hover:border-brand-500 hover:bg-brand-50/30 transition-all text-center">
             <FaIcon icon={isSubmitting ? 'fa-solid fa-spinner' : 'fa-solid fa-upload'} size={40} className={`text-gray-400 mb-2 ${isSubmitting ? 'animate-spin' : ''}`} />
             <span className="text-sm font-semibold text-gray-700">
               {isSubmitting ? 'Importing...' : 'Click to upload Excel or CSV file'}

@@ -32,15 +32,15 @@ export const MetricsCard: React.FC<MetricsCardProps> = ({
   };
 
   return (
-    <div className="group overflow-hidden rounded-[32px] border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur-xl transition duration-300 hover:-translate-y-0.5 hover:shadow-lg">
+    <div className="group overflow-hidden rounded-[32px] border border-slate-200/80 bg-white p-6 shadow-sm transition duration-300 hover:shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-3">
           <p className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-bold">{label}</p>
-          <p className="text-3xl font-extrabold text-slate-950 tracking-tight">{value}</p>
+          <p className="text-3xl font-bold text-slate-950">{value}</p>
           {subtext && <p className="text-sm text-slate-500">{subtext}</p>}
         </div>
         {icon && (
-          <div className={`grid h-14 w-14 place-items-center rounded-3xl text-slate-900 shadow-sm ${getIconContainerStyle(label)}`}>
+          <div className={`grid h-14 w-14 place-items-center rounded-lg text-slate-900 shadow-sm ${getIconContainerStyle(label)}`}>
             {icon}
           </div>
         )}

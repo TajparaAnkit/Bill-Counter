@@ -83,9 +83,17 @@ export const CatalogPage: React.FC = () => {
 
         <div className="relative max-w-5xl mx-auto px-5 pt-12 pb-16 text-center">
           {/* Avatar */}
-          <span className={`mx-auto grid h-20 w-20 place-items-center rounded-3xl ${theme.avatar} backdrop-blur text-3xl font-black shadow-lg`}>
-            {shopName.charAt(0).toUpperCase()}
-          </span>
+          {profile?.logoUrl ? (
+            <img
+              src={profile.logoUrl}
+              alt={shopName}
+              className="mx-auto h-20 w-20 rounded-3xl bg-white object-contain p-1.5 shadow-lg"
+            />
+          ) : (
+            <span className={`mx-auto grid h-20 w-20 place-items-center rounded-3xl ${theme.avatar} backdrop-blur text-3xl font-black shadow-lg`}>
+              {shopName.charAt(0).toUpperCase()}
+            </span>
+          )}
 
           <h1 className="mt-4 text-3xl sm:text-4xl font-extrabold tracking-tight font-display">
             {shopName}

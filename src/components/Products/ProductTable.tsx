@@ -90,20 +90,20 @@ export const ProductTable: React.FC<ProductTableProps> = ({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Search products by name..."
-          className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl bg-white shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+          className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg bg-white shadow-xs focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all"
         />
       </div>
 
       {/* Bulk action bar — shown only when something is selected */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 animate-in fade-in slide-in-from-top-1 duration-200">
+        <div className="flex items-center justify-between bg-brand-50 border border-brand-200 rounded-lg px-4 py-3 animate-in fade-in slide-in-from-top-1 duration-200">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-semibold text-blue-800">
+            <span className="text-sm font-semibold text-brand-800">
               {selectedIds.size} selected
             </span>
             <button
               onClick={clearSelection}
-              className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+              className="text-xs text-brand-600 hover:text-brand-800 font-medium"
             >
               Clear
             </button>
@@ -119,22 +119,23 @@ export const ProductTable: React.FC<ProductTableProps> = ({
       )}
 
       {/* Table Container */}
-      <div className="bg-white rounded-xl shadow-xs border border-gray-150 overflow-hidden">
+      <div className="bg-white rounded-lg shadow-xs border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-150 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <tr className="bg-gray-50 border-b border-slate-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 <th className="p-4 w-12">
                   <input
                     type="checkbox"
                     checked={allOnPageSelected}
                     onChange={toggleSelectAllOnPage}
-                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
                     title="Select all on this page"
                   />
                 </th>
                 <th className="p-4 w-20">Image</th>
                 <th className="p-4">Product Name</th>
+                <th className="p-4 w-28">HSN</th>
                 <th className="p-4">Price</th>
                 <th className="p-4 text-center w-40">Actions</th>
               </tr>
@@ -146,14 +147,14 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                   return (
                     <tr
                       key={p.id}
-                      className={`transition-colors ${isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50/50'}`}
+                      className={`transition-colors ${isSelected ? 'bg-brand-50/60' : 'hover:bg-gray-50/50'}`}
                     >
                       <td className="p-4">
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleOne(p.id)}
-                          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
                         />
                       </td>
                       <td className="p-4">
@@ -174,8 +175,10 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                       <td className="p-4 font-semibold text-gray-800">
                         {p.name}
                       </td>
-                      <td className="p-4 font-bold text-blue-600">
+                      <td className="p-4 text-sm font-mono text-gray-600">{p.hsn || <span className="text-gray-300">—</span>}</td>
+                      <td className="p-4 font-bold text-brand-600">
                         ₹{p.price.toFixed(2)}
+                        {p.unit && <span className="ml-1 text-xs font-semibold text-gray-400">/ {p.unit}</span>}
                       </td>
                       <td className="p-4">
                         <div className="flex justify-center items-center space-x-2">
@@ -188,7 +191,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                           </button>
                           <button
                             onClick={() => onView(p)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-1.5 text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
                             title="View Details"
                           >
                             <FaIcon icon="fa-solid fa-eye" size={18} />
@@ -214,7 +217,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                 })
               ) : (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-gray-500">
+                  <td colSpan={6} className="p-8 text-center text-gray-500">
                     {searchTerm ? 'No matching products found.' : 'No products available.'}
                   </td>
                 </tr>
