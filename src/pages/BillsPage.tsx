@@ -1,28 +1,55 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Layout } from '../components/shared/Layout';
 import { FaIcon } from '../components/shared/FaIcon';
-import { BillForm, BillCustomerInput, BillTotalsInput } from '../components/Bills/BillForm';
+import { BillForm, BillDraft } from '../components/Bills/BillForm';
 import { BillDetailModal } from '../components/Bills/BillDetailModal';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
-import {
-  getBills,
-  getProducts,
-  getBusinessProfile,
-  getCustomers,
-  getNextBillNumber,
-  addBill,
-  deleteBill
-} from '../services/db';
-import { Bill, Product, UserProfile, BillItem, Customer } from '../types';
-import { PAYMENT_META, getPaymentStatus } from '../utils/payment';
+import { getBills, getProducts, getBusinessProfile, getCustomers, addBill, deleteBill } from '../services/db';
+import { Bill, Product, UserProfile, Customer } from '../types';
+import { PAYMENT_META, getPaymentStatus, getAmountDue } from '../utils/payment';
 import { Pagination } from '../components/ui/Pagination';
 import { useConfirm } from '../components/ui/confirm';
+import { Select } from '../components/ui/Select';
+import { formatISODate, todayISO, daysBetweenISO } from '../utils/tax';
+import { generateInvoicePDF } from '../utils/pdf';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '../components/ui/dropdown-menu';
+
+type StatusFilter = 'all' | 'paid' | 'unpaid';
+type RangeKey = '30' | '90' | '365' | 'all';
+
+const RANGE_LABEL: Record<RangeKey, string> = {
+  '30': 'Last 30 Days',
+  '90': 'Last 90 Days',
+  '365': 'Last 365 Days',
+  all: 'All Time',
+};
+
+const toDate = (timestamp: any): Date | null => {
+  if (!timestamp) return null;
+  if (timestamp.toDate) return timestamp.toDate();
+  if (timestamp.seconds) return new Date(timestamp.seconds * 1000);
+  const d = new Date(timestamp);
+  return isNaN(d.getTime()) ? null : d;
+};
+
+const billDate = (b: Bill): Date | null => (b.invoiceDate ? new Date(b.invoiceDate) : toDate(b.createdAt));
+
+const formatCurrency = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const formatShort = (n: number) => n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 
 export const BillsPage: React.FC = () => {
   const { user } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [bills, setBills] = useState<Bill[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -30,14 +57,27 @@ export const BillsPage: React.FC = () => {
   const [businessProfile, setBusinessProfile] = useState<UserProfile | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'list' | 'create'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'create'>(searchParams.get('new') ? 'create' : 'list');
   const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<StatusFilter>('all');
+  const [range, setRange] = useState<RangeKey>('365');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  // Selection
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  // `/bills?new=1` (sidebar button) opens the editor directly; drop the param afterwards.
+  useEffect(() => {
+    if (searchParams.get('new')) {
+      setViewMode('create');
+      const next = new URLSearchParams(searchParams);
+      next.delete('new');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const loadData = async () => {
     if (!user) return;
@@ -46,14 +86,11 @@ export const BillsPage: React.FC = () => {
       const [billsData, productsData, profileData] = await Promise.all([
         getBills(user.uid),
         getProducts(user.uid),
-        getBusinessProfile(user.uid)
+        getBusinessProfile(user.uid),
       ]);
       setBills(billsData);
       setProducts(productsData);
       setBusinessProfile(profileData);
-
-      // Customers are optional for invoicing — never let a customers failure
-      // block the bill list from loading.
       try {
         setCustomers(await getCustomers(user.uid));
       } catch (custErr) {
@@ -68,50 +105,14 @@ export const BillsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (user) {
-      loadData();
-    }
+    if (user) loadData();
   }, [user]);
 
-  const handleSaveBill = async (
-    customer: BillCustomerInput,
-    items: BillItem[],
-    totals: BillTotalsInput,
-    notes?: string
-  ) => {
+  const handleSaveBill = async (draft: BillDraft) => {
     if (!user) return;
     try {
-      const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-      const discount = Math.min(subtotal, Math.max(0, totals.discount || 0));
-      const taxRate = Math.max(0, totals.taxRate || 0);
-      const taxable = subtotal - discount;
-      const tax = taxable * (taxRate / 100);
-      const total = taxable + tax;
-
-      // Calculate sequential bill details
-      const next = await getNextBillNumber(user.uid, businessProfile?.billPrefix);
-
-      const billData = {
-        billNo: next.billNo,
-        billSeqNum: next.billSeqNum,
-        customerName: customer.name,
-        customerId: customer.customerId,
-        customerPhone: customer.customerPhone,
-        items,
-        subtotal,
-        discount,
-        taxRate,
-        tax,
-        total,
-        paymentStatus: 'unpaid' as const,
-        amountPaid: 0,
-        notes
-      };
-
-      const newBill = await addBill(user.uid, billData);
+      const newBill = await addBill(user.uid, draft);
       toast.success('Invoice saved successfully');
-
-      // Update local state and show detail modal
       setBills([newBill, ...bills]);
       setSelectedBill(newBill);
       setIsDetailOpen(true);
@@ -139,338 +140,299 @@ export const BillsPage: React.FC = () => {
     }
   };
 
-  const toDate = (timestamp: any): Date | null => {
-    if (!timestamp) return null;
-    if (timestamp.toDate) return timestamp.toDate();
-    return new Date(timestamp);
+  const handleDownload = async (bill: Bill) => {
+    try {
+      setDownloadingId(bill.id);
+      await generateInvoicePDF(bill, businessProfile, `Invoice_${bill.billNo}.pdf`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to generate PDF');
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
-  const formatDate = (timestamp: any) => {
-    const d = toDate(timestamp);
-    if (!d) return 'N/A';
-    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-  };
+  // ---- Range filter ----
+  const inRange = useMemo(() => {
+    if (range === 'all') return () => true;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - parseInt(range));
+    cutoff.setHours(0, 0, 0, 0);
+    return (b: Bill) => {
+      const d = billDate(b);
+      return !d || d >= cutoff;
+    };
+  }, [range]);
 
-  const formatCurrency = (n: number) =>
-    n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const rangeBills = useMemo(() => bills.filter(inRange), [bills, inRange]);
 
-  // Derived summary stats
+  // ---- Summary tiles (respect the date range, not the status/search filters) ----
   const stats = useMemo(() => {
-    const totalRevenue = bills.reduce((sum, b) => sum + (b.total || 0), 0);
-    const now = new Date();
-    const thisMonth = bills
-      .filter((b) => {
-        const d = toDate(b.createdAt);
-        return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      })
-      .reduce((sum, b) => sum + (b.total || 0), 0);
-    const avg = bills.length ? totalRevenue / bills.length : 0;
-    return { count: bills.length, totalRevenue, thisMonth, avg };
-  }, [bills]);
+    const totalSales = rangeBills.reduce((s, b) => s + (b.total || 0), 0);
+    const paid = rangeBills.reduce((s, b) => s + Math.min(b.total || 0, b.amountPaid || 0), 0);
+    const unpaid = rangeBills.reduce((s, b) => s + getAmountDue(b), 0);
+    return { totalSales, paid, unpaid, count: rangeBills.length };
+  }, [rangeBills]);
 
-  // Search filter
+  // ---- Table rows ----
   const filteredBills = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return bills;
-    return bills.filter(
-      (b) =>
+    return rangeBills.filter((b) => {
+      const st = getPaymentStatus(b);
+      if (status === 'paid' && st !== 'paid') return false;
+      if (status === 'unpaid' && st === 'paid') return false;
+      if (!term) return true;
+      return (
         b.customerName?.toLowerCase().includes(term) ||
-        b.billNo?.toLowerCase().includes(term)
-    );
-  }, [bills, search]);
+        b.billNo?.toLowerCase().includes(term) ||
+        b.billTo?.gstin?.toLowerCase().includes(term)
+      );
+    });
+  }, [rangeBills, search, status]);
 
-  // Reset to first page when the search or dataset changes.
   useEffect(() => {
     setPage(1);
-  }, [search, bills.length]);
+  }, [search, status, range, bills.length]);
 
   const pagedBills = filteredBills.slice((page - 1) * pageSize, page * pageSize);
 
-  const getInitials = (name: string) => {
-    if (!name) return '?';
-    const parts = name.trim().split(/\s+/);
-    return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
+  const dueInfo = (b: Bill): { text: string; cls: string } => {
+    if (getPaymentStatus(b) === 'paid') return { text: 'Paid', cls: 'text-emerald-600' };
+    if (!b.dueDate) return { text: '—', cls: 'text-slate-400' };
+    const days = daysBetweenISO(todayISO(), b.dueDate);
+    if (days < 0) return { text: `Overdue by ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'}`, cls: 'text-rose-600' };
+    if (days === 0) return { text: 'Due today', cls: 'text-amber-600' };
+    return { text: `Due in ${days} day${days === 1 ? '' : 's'}`, cls: 'text-slate-600' };
   };
 
-  const avatarPalette = [
-    'from-blue-700 to-blue-500',
-    'from-sky-500 to-blue-500',
-    'from-violet-500 to-purple-500',
-    'from-amber-500 to-orange-500',
-    'from-rose-500 to-pink-500',
-  ];
-  const avatarColor = (name: string) => {
-    const code = (name || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    return avatarPalette[code % avatarPalette.length];
-  };
-
-  const statCards = [
-    {
-      label: 'Total Invoices',
-      value: stats.count.toString(),
-      icon: 'fa-solid fa-file-invoice',
-      tint: 'from-blue-700 to-blue-500',
-      bg: 'bg-blue-50',
-      text: 'text-blue-600',
-    },
-    {
-      label: 'Total Revenue',
-      value: `₹${formatCurrency(stats.totalRevenue)}`,
-      icon: 'fa-solid fa-indian-rupee-sign',
-      tint: 'from-sky-500 to-blue-500',
-      bg: 'bg-sky-50',
-      text: 'text-sky-600',
-    },
-    {
-      label: 'This Month',
-      value: `₹${formatCurrency(stats.thisMonth)}`,
-      icon: 'fa-solid fa-calendar-day',
-      tint: 'from-violet-500 to-purple-500',
-      bg: 'bg-violet-50',
-      text: 'text-violet-600',
-    },
-    {
-      label: 'Avg. Invoice',
-      value: `₹${formatCurrency(stats.avg)}`,
-      icon: 'fa-solid fa-chart-line',
-      tint: 'from-amber-500 to-orange-500',
-      bg: 'bg-amber-50',
-      text: 'text-amber-600',
-    },
+  const tiles: { key: StatusFilter; label: string; icon: string; value: string; color: string }[] = [
+    { key: 'all', label: 'Total Sales', icon: 'fa-solid fa-chart-simple', value: `₹ ${formatShort(stats.totalSales)}`, color: 'text-brand-600' },
+    { key: 'paid', label: 'Paid', icon: 'fa-solid fa-circle-check', value: `₹ ${formatShort(stats.paid)}`, color: 'text-emerald-600' },
+    { key: 'unpaid', label: 'Unpaid', icon: 'fa-solid fa-circle-exclamation', value: `₹ ${formatShort(stats.unpaid)}`, color: 'text-rose-600' },
   ];
 
   return (
     <Layout>
-      <div className="space-y-6 animate-slide-up">
-        {/* Top bar */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-100 pb-5">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-700 to-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
-              <FaIcon icon="fa-solid fa-file-invoice-dollar" size={20} className="text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-extrabold tracking-tight text-slate-800 font-display">
-                {viewMode === 'create' ? 'New Invoice' : 'Bills & Invoices'}
-              </h1>
-              <p className="text-slate-500 mt-0.5 text-sm font-medium">
-                {viewMode === 'create'
-                  ? 'Generate a customer invoice'
-                  : 'Create and manage client transactions'
-                }
-              </p>
-            </div>
+      {viewMode === 'create' && !isLoading ? (
+        <BillForm
+          userId={user?.uid || ''}
+          products={products}
+          customers={customers}
+          profile={businessProfile}
+          existingBillNos={bills.map((b) => b.billNo)}
+          onSave={handleSaveBill}
+          onCancel={() => setViewMode('list')}
+        />
+      ) : (
+        <div className="space-y-4">
+          {/* Title row */}
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-xl font-bold text-slate-800">Sales Invoices</h1>
+            <span className="hidden sm:inline text-xs text-slate-400">
+              {stats.count} invoice{stats.count === 1 ? '' : 's'} · {RANGE_LABEL[range]}
+            </span>
           </div>
 
-          <div>
-            {viewMode === 'create' ? (
-              <button
-                onClick={() => setViewMode('list')}
-                className="btn-secondary flex items-center space-x-2 py-2.5 px-4.5"
-              >
-                <FaIcon icon="fa-solid fa-arrow-left" size={16} />
-                <span>Back to List</span>
-              </button>
-            ) : (
-              <button
-                onClick={() => setViewMode('create')}
-                className="btn-primary flex items-center space-x-2 py-2.5 px-4.5"
-              >
-                <FaIcon icon="fa-solid fa-plus" size={16} />
-                <span>New Bill</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Content Body */}
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-24 space-y-4">
-            <FaIcon icon="fa-solid fa-spinner" className="animate-spin text-blue-500" size={40} />
-            <p className="text-slate-500 font-semibold">Loading invoices...</p>
-          </div>
-        ) : viewMode === 'create' ? (
-          <BillForm
-            userId={user?.uid || ''}
-            products={products}
-            customers={customers}
-            billPrefix={businessProfile?.billPrefix}
-            taxEnabled={businessProfile?.taxEnabled}
-            defaultTaxRate={businessProfile?.defaultTaxRate}
-            onSave={handleSaveBill}
-            onCancel={() => setViewMode('list')}
-          />
-        ) : (
-          <>
-            {/* Summary stat cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {statCards.map((card) => (
-                <div
-                  key={card.label}
-                  className="group bg-white rounded-2xl border border-slate-100/80 shadow-[0_8px_30px_rgb(0,0,0,0.02)] p-5 transition-all duration-300 hover:shadow-[0_12px_40px_rgba(16,185,129,0.08)] hover:-translate-y-0.5"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${card.tint} flex items-center justify-center shadow-md shadow-slate-900/5`}>
-                      <FaIcon icon={card.icon} size={16} className="text-white" />
-                    </div>
-                  </div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-4">
-                    {card.label}
-                  </p>
-                  <p className="text-2xl font-extrabold text-slate-800 mt-1 tracking-tight truncate">
-                    {card.value}
-                  </p>
-                </div>
-              ))}
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-24 space-y-4">
+              <FaIcon icon="fa-solid fa-spinner" className="animate-spin text-brand-500" size={36} />
+              <p className="text-slate-500 font-semibold">Loading invoices...</p>
             </div>
+          ) : (
+            <>
+              {/* Summary tiles (click to filter) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {tiles.map((t) => {
+                  const active = status === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => setStatus(t.key)}
+                      className={`text-left rounded-lg border px-4 py-3 transition-colors ${
+                        active ? 'border-brand-500 bg-brand-50/60 ring-1 ring-brand-500' : 'border-slate-200 bg-white hover:border-brand-300'
+                      }`}
+                    >
+                      <span className={`flex items-center gap-2 text-sm ${t.color}`}>
+                        <FaIcon icon={t.icon} size={13} />
+                        {t.label}
+                      </span>
+                      <span className="mt-1 block text-xl font-bold text-slate-800">{t.value}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
-            {/* List card */}
-            <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-slate-100/80 overflow-hidden">
-              {/* Toolbar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <h2 className="font-bold text-slate-800">All Invoices</h2>
-                  <span className="bg-slate-100 text-slate-500 text-xs font-bold px-2 py-0.5 rounded-full">
-                    {filteredBills.length}
-                  </span>
-                </div>
-                <div className="relative w-full sm:w-72">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                    <FaIcon icon="fa-solid fa-magnifying-glass" size={14} />
+              {/* Filter bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className="relative sm:w-72">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                    <FaIcon icon="fa-solid fa-magnifying-glass" size={13} />
                   </span>
                   <input
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search by customer or invoice no..."
-                    className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white transition-all duration-300"
+                    placeholder="Search party, invoice no. or GSTIN"
+                    className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600"
                   />
+                </div>
+                <div className="relative sm:w-48">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10">
+                    <FaIcon icon="fa-regular fa-calendar" size={13} />
+                  </span>
+                  <Select
+                    aria-label="Date range"
+                    options={(Object.keys(RANGE_LABEL) as RangeKey[]).map((k) => ({ value: k, label: RANGE_LABEL[k] }))}
+                    value={range}
+                    onChange={(v) => setRange(v as RangeKey)}
+                    className="pl-9 py-2"
+                  />
+                </div>
+                <div className="sm:ml-auto">
+                  <button onClick={() => setViewMode('create')} className="btn-primary w-full sm:w-auto flex items-center justify-center gap-2 py-2 px-4 text-sm">
+                    <FaIcon icon="fa-solid fa-plus" size={12} />
+                    Create Sales Invoice
+                  </button>
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50/60 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      <th className="p-4 w-44">Invoice No</th>
-                      <th className="p-4">Customer</th>
-                      <th className="p-4">Date</th>
-                      <th className="p-4 text-right">Total</th>
-                      <th className="p-4 text-center">Status</th>
-                      <th className="p-4 text-center w-28">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredBills.length > 0 ? (
-                      pagedBills.map((bill) => (
-                        <tr key={bill.id} className="group hover:bg-blue-50/30 transition-colors">
-                          <td className="p-4">
-                            <div className="flex items-center space-x-2.5 font-bold text-slate-700">
-                              <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                                <FaIcon icon="fa-solid fa-file-invoice" size={14} />
-                              </span>
-                              <span>{bill.billNo}</span>
-                            </div>
-                          </td>
-                          <td className="p-4">
-                            <div className="flex items-center space-x-3">
-                              <span className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarColor(bill.customerName)} text-white text-xs font-bold flex items-center justify-center shrink-0 shadow-sm`}>
-                                {getInitials(bill.customerName)}
-                              </span>
-                              <span className="font-bold text-slate-700">{bill.customerName}</span>
-                            </div>
-                          </td>
-                          <td className="p-4 text-slate-500 font-semibold text-xs whitespace-nowrap">
-                            {formatDate(bill.createdAt)}
-                          </td>
-                          <td className="p-4 text-right font-extrabold text-blue-700 whitespace-nowrap">
-                            ₹{formatCurrency(bill.total)}
-                          </td>
-                          <td className="p-4">
-                            <div className="flex justify-center">
-                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${PAYMENT_META[getPaymentStatus(bill)].badgeClass}`}>
-                                <FaIcon icon={PAYMENT_META[getPaymentStatus(bill)].icon} size={11} />
-                                {PAYMENT_META[getPaymentStatus(bill)].label}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="p-4">
-                            <div className="flex justify-center items-center gap-1.5">
-                              <button
-                                onClick={() => {
-                                  setSelectedBill(bill);
-                                  setIsDetailOpen(true);
-                                }}
-                                className="bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 flex items-center space-x-1.5"
-                                title="View Invoice"
-                              >
-                                <FaIcon icon="fa-solid fa-eye" size={14} />
-                                <span>View</span>
-                              </button>
-                              <button
-                                onClick={() => handleDeleteBill(bill)}
-                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Delete Invoice"
-                              >
-                                <FaIcon icon="fa-solid fa-trash" size={14} />
-                              </button>
+              {/* Table */}
+              <div className="border border-slate-200 rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-600">
+                        <th className="px-4 py-3 whitespace-nowrap">Date</th>
+                        <th className="px-4 py-3 whitespace-nowrap">Invoice Number</th>
+                        <th className="px-4 py-3">Party Name</th>
+                        <th className="px-4 py-3 whitespace-nowrap">Due In</th>
+                        <th className="px-4 py-3 whitespace-nowrap">Amount</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-2 py-3 w-12" />
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {pagedBills.length > 0 ? (
+                        pagedBills.map((bill) => {
+                          const st = getPaymentStatus(bill);
+                          const due = getAmountDue(bill);
+                          const d = dueInfo(bill);
+                          const createdDt = toDate(bill.createdAt);
+                          const dateText = bill.invoiceDate
+                            ? formatISODate(bill.invoiceDate)
+                            : createdDt
+                              ? createdDt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                              : 'N/A';
+                          return (
+                            <tr key={bill.id} className="hover:bg-slate-50/70 transition-colors">
+                              <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{dateText}</td>
+                              <td className="px-4 py-3">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedBill(bill);
+                                    setIsDetailOpen(true);
+                                  }}
+                                  className="font-semibold text-brand-700 hover:underline whitespace-nowrap"
+                                >
+                                  {bill.billNo}
+                                </button>
+                              </td>
+                              <td className="px-4 py-3 text-slate-800 font-medium uppercase">{bill.customerName}</td>
+                              <td className={`px-4 py-3 whitespace-nowrap font-medium ${d.cls}`}>{d.text}</td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div className="text-slate-800 font-semibold">₹ {formatCurrency(bill.total)}</div>
+                                {due > 0 && st !== 'paid' && <div className="text-xs text-slate-500">(₹ {formatCurrency(due)} unpaid)</div>}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-bold ${PAYMENT_META[st].badgeClass}`}>
+                                  {PAYMENT_META[st].label}
+                                </span>
+                              </td>
+                              <td className="px-2 py-3 text-center">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button type="button" className="p-2 rounded-md text-slate-500 hover:bg-slate-100" aria-label="Invoice actions">
+                                      {downloadingId === bill.id ? (
+                                        <FaIcon icon="fa-solid fa-spinner" size={14} className="animate-spin" />
+                                      ) : (
+                                        <FaIcon icon="fa-solid fa-ellipsis-vertical" size={14} />
+                                      )}
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="min-w-[10rem]">
+                                    <DropdownMenuItem
+                                      onSelect={() => {
+                                        setSelectedBill(bill);
+                                        setIsDetailOpen(true);
+                                      }}
+                                    >
+                                      <FaIcon icon="fa-solid fa-eye" size={13} className="w-4 text-slate-400" />
+                                      View
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => handleDownload(bill)}>
+                                      <FaIcon icon="fa-solid fa-file-arrow-down" size={13} className="w-4 text-slate-400" />
+                                      Download PDF
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem variant="destructive" onSelect={() => handleDeleteBill(bill)}>
+                                      <FaIcon icon="fa-solid fa-trash" size={13} className="w-4" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={7} className="px-6 py-16">
+                            <div className="flex flex-col items-center justify-center text-center space-y-3">
+                              <div className="w-14 h-14 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center">
+                                <FaIcon icon={search || status !== 'all' ? 'fa-solid fa-magnifying-glass' : 'fa-solid fa-file-circle-plus'} size={22} className="text-slate-300" />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-slate-600">
+                                  {search || status !== 'all' ? 'No matching invoices' : 'No invoices in this period'}
+                                </p>
+                                <p className="text-sm text-slate-400 max-w-xs">
+                                  {search || status !== 'all'
+                                    ? 'Try a different filter, party name or invoice number.'
+                                    : 'Create your first sales invoice to start tracking payments.'}
+                                </p>
+                              </div>
+                              {!search && status === 'all' && (
+                                <button onClick={() => setViewMode('create')} className="btn-primary flex items-center gap-2 text-sm">
+                                  <FaIcon icon="fa-solid fa-plus" size={12} />
+                                  Create Sales Invoice
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={6} className="px-6 py-20">
-                          <div className="flex flex-col items-center justify-center text-center space-y-4">
-                            <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center">
-                              <FaIcon
-                                icon={search ? 'fa-solid fa-magnifying-glass' : 'fa-solid fa-file-circle-plus'}
-                                size={26}
-                                className="text-slate-300"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <p className="font-bold text-slate-600">
-                                {search ? 'No matching invoices' : 'No bills created yet'}
-                              </p>
-                              <p className="text-sm text-slate-400 max-w-xs">
-                                {search
-                                  ? 'Try a different customer name or invoice number.'
-                                  : 'Generate your first invoice to start tracking transactions.'}
-                              </p>
-                            </div>
-                            {!search && (
-                              <button
-                                onClick={() => setViewMode('create')}
-                                className="btn-primary flex items-center space-x-2 mt-1"
-                              >
-                                <FaIcon icon="fa-solid fa-plus" size={14} />
-                                <span>Create Invoice</span>
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <Pagination
+                  page={page}
+                  pageSize={pageSize}
+                  total={filteredBills.length}
+                  onPageChange={setPage}
+                  onPageSizeChange={(s) => {
+                    setPageSize(s);
+                    setPage(1);
+                  }}
+                  itemLabel="invoices"
+                />
               </div>
-              <Pagination
-                page={page}
-                pageSize={pageSize}
-                total={filteredBills.length}
-                onPageChange={setPage}
-                onPageSizeChange={(s) => {
-                  setPageSize(s);
-                  setPage(1);
-                }}
-                itemLabel="invoices"
-              />
-            </div>
-          </>
-        )}
-      </div>
+            </>
+          )}
+        </div>
+      )}
 
-      {/* Bill Detail Modal */}
       <BillDetailModal
         isOpen={isDetailOpen}
         onClose={() => {

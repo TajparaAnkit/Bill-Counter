@@ -47,6 +47,23 @@ export const uploadImageToCloudinary = async (file: File): Promise<string> => {
   return data.secure_url as string;
 };
 
+// Recursively remove `undefined` values (Firestore rejects them). Leaves
+// Firestore sentinels (serverTimestamp etc.), Dates and primitives untouched.
+const stripUndefined = <T,>(value: T): T => {
+  if (Array.isArray(value)) return value.map((v) => stripUndefined(v)) as any;
+  if (value && typeof value === 'object') {
+    const proto = Object.getPrototypeOf(value);
+    if (proto === Object.prototype || proto === null) {
+      const out: Record<string, any> = {};
+      Object.entries(value as any).forEach(([k, v]) => {
+        if (v !== undefined) out[k] = stripUndefined(v);
+      });
+      return out as T;
+    }
+  }
+  return value;
+};
+
 // ==========================================
 // BUSINESS PROFILE SETTINGS
 // ==========================================
@@ -67,11 +84,11 @@ export const getBusinessProfile = async (userId: string): Promise<UserProfile | 
 
 export const updateBusinessProfile = async (userId: string, data: Partial<UserProfile>): Promise<void> => {
   const docRef = doc(db, 'users', userId);
-  await setDoc(docRef, {
+  await setDoc(docRef, stripUndefined({
     ...data,
     uid: userId,
     updatedAt: serverTimestamp()
-  }, { merge: true });
+  }), { merge: true });
 
   // Mirror only public-safe fields to the publicly readable catalog profile.
   const publicData: Record<string, any> = { userId, updatedAt: serverTimestamp() };
@@ -80,6 +97,7 @@ export const updateBusinessProfile = async (userId: string, data: Partial<UserPr
   if (data.upiId !== undefined) publicData.upiId = data.upiId;
   if (data.tagline !== undefined) publicData.tagline = data.tagline;
   if (data.catalogTheme !== undefined) publicData.catalogTheme = data.catalogTheme;
+  if (data.logoUrl !== undefined) publicData.logoUrl = data.logoUrl;
   await setDoc(doc(db, 'publicProfiles', userId), publicData, { merge: true });
 };
 
@@ -129,7 +147,9 @@ export const addProduct = async (
   userId: string,
   name: string,
   price: number,
-  imageFile?: File | null
+  imageFile?: File | null,
+  hsn?: string,
+  unit?: string
 ): Promise<Product> => {
   const productRef = doc(collection(db, 'products'));
   const productId = productRef.id;
@@ -150,6 +170,8 @@ export const addProduct = async (
     name,
     price,
     imageUrl,
+    hsn: (hsn || '').trim(),
+    unit: (unit || 'PCS').trim().toUpperCase(),
     createdAt: serverTimestamp()
   };
 
@@ -163,7 +185,9 @@ export const updateProduct = async (
   name: string,
   price: number,
   imageUrl?: string,
-  newImageFile?: File | null
+  newImageFile?: File | null,
+  hsn?: string,
+  unit?: string
 ): Promise<void> => {
   const productRef = doc(db, 'products', productId);
   let updatedImageUrl = imageUrl || '';
@@ -181,6 +205,8 @@ export const updateProduct = async (
     name,
     price,
     imageUrl: updatedImageUrl,
+    hsn: (hsn || '').trim(),
+    unit: (unit || 'PCS').trim().toUpperCase(),
     updatedAt: serverTimestamp()
   });
 };
@@ -204,7 +230,7 @@ export const bulkDeleteProducts = async (productIds: string[]): Promise<void> =>
 
 export const bulkImportProducts = async (
   userId: string,
-  items: { name: string; price: number; imageUrl?: string }[]
+  items: { name: string; price: number; imageUrl?: string; hsn?: string; unit?: string }[]
 ): Promise<void> => {
   const batch = writeBatch(db);
 
@@ -216,6 +242,8 @@ export const bulkImportProducts = async (
       name: item.name,
       price: item.price,
       imageUrl: item.imageUrl || '',
+      hsn: (item.hsn || '').trim(),
+      unit: (item.unit || 'PCS').trim().toUpperCase(),
       createdAt: serverTimestamp()
     });
   });
@@ -289,11 +317,9 @@ export const addBill = async (
     createdAt: serverTimestamp()
   };
 
-  // Firestore rejects `undefined` field values — strip them before writing.
-  const sanitized: Record<string, any> = {};
-  Object.entries(finalBill).forEach(([k, v]) => {
-    if (v !== undefined) sanitized[k] = v;
-  });
+  // Firestore rejects `undefined` field values (including nested ones inside
+  // billTo/shipTo/items) — strip them deeply before writing.
+  const sanitized = stripUndefined(finalBill);
 
   await setDoc(billRef, sanitized);
   return { ...finalBill, createdAt: new Date() };
@@ -344,34 +370,53 @@ export const getCustomers = async (userId: string): Promise<Customer[]> => {
   }
 };
 
+export type CustomerInput = Omit<Customer, 'id' | 'userId' | 'createdAt'>;
+
+// Firestore rejects `undefined` values — drop them, and normalise optional
+// strings to '' so legacy readers keep working.
+const buildCustomerData = (data: CustomerInput): Record<string, any> => {
+  const out: Record<string, any> = {
+    name: data.name,
+    phone: data.phone || '',
+    email: data.email || '',
+    address: data.address || '',
+    partyType: data.partyType || 'customer',
+    category: data.category || '',
+    gstin: (data.gstin || '').toUpperCase(),
+    pan: (data.pan || '').toUpperCase(),
+    shippingAddress: data.shippingSameAsBilling ? data.address || '' : data.shippingAddress || '',
+    shippingSameAsBilling: data.shippingSameAsBilling !== false,
+    openingBalance: Math.max(0, data.openingBalance || 0),
+    openingBalanceType: data.openingBalanceType || 'to_collect',
+    creditPeriod: Math.max(0, data.creditPeriod || 0),
+    creditLimit: Math.max(0, data.creditLimit || 0),
+  };
+  Object.keys(out).forEach((k) => out[k] === undefined && delete out[k]);
+  return out;
+};
+
 export const addCustomer = async (
   userId: string,
-  data: { name: string; phone?: string; email?: string; address?: string }
+  data: CustomerInput
 ): Promise<Customer> => {
   const customerRef = doc(collection(db, 'customers'));
   const customerData = {
     id: customerRef.id,
     userId,
-    name: data.name,
-    phone: data.phone || '',
-    email: data.email || '',
-    address: data.address || '',
+    ...buildCustomerData(data),
     createdAt: serverTimestamp(),
   };
   await setDoc(customerRef, customerData);
-  return { ...customerData, createdAt: new Date() };
+  return { ...(customerData as any), createdAt: new Date() } as Customer;
 };
 
 export const updateCustomer = async (
   customerId: string,
-  data: { name: string; phone?: string; email?: string; address?: string }
+  data: CustomerInput
 ): Promise<void> => {
   const customerRef = doc(db, 'customers', customerId);
   await updateDoc(customerRef, {
-    name: data.name,
-    phone: data.phone || '',
-    email: data.email || '',
-    address: data.address || '',
+    ...buildCustomerData(data),
     updatedAt: serverTimestamp(),
   });
 };

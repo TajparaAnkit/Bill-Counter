@@ -28,7 +28,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+          <div className="bg-white rounded-lg shadow-sm p-8 max-w-md w-full">
             <div className="flex justify-center mb-4">
               <FaIcon icon="fa-solid fa-circle-exclamation" className="w-12 h-12 text-red-600" />
             </div>

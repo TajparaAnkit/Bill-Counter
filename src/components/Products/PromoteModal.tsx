@@ -102,10 +102,10 @@ export const PromoteModal: React.FC<PromoteModalProps> = ({ product, onClose }) 
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="flex flex-col bg-white rounded-2xl w-full max-w-lg max-h-[92vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+      <div className="flex flex-col bg-white rounded-lg w-full max-w-lg max-h-[92vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
         {/* Header */}
-        <div className="shrink-0 flex justify-between items-center bg-gray-50 border-b border-gray-150 p-4">
+        <div className="shrink-0 flex justify-between items-center bg-gray-50 border-b border-slate-200 p-4">
           <div>
             <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
               <FaIcon icon="fa-solid fa-bullhorn" className="text-purple-600" size={18} />
@@ -123,7 +123,7 @@ export const PromoteModal: React.FC<PromoteModalProps> = ({ product, onClose }) 
 
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {/* Generated image preview */}
-          <div className="rounded-xl overflow-hidden border border-gray-150 bg-gray-50 aspect-square max-w-xs mx-auto flex items-center justify-center">
+          <div className="rounded-lg overflow-hidden border border-slate-200 bg-gray-50 aspect-square max-w-xs mx-auto flex items-center justify-center">
             {generating || !imageUrl ? (
               <div className="flex flex-col items-center gap-2 text-gray-400">
                 <FaIcon icon="fa-solid fa-spinner" className="animate-spin" size={28} />
@@ -141,13 +141,13 @@ export const PromoteModal: React.FC<PromoteModalProps> = ({ product, onClose }) 
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
               rows={6}
-              className="mt-1 w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-gray-50 focus:bg-white transition-all"
+              className="mt-1 w-full p-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-gray-50 focus:bg-white transition-all"
             />
             <p className="text-xs text-gray-400 mt-1">Edit freely, then share or copy.</p>
           </div>
 
           {/* Honest note about Instagram */}
-          <div className="bg-blue-50 text-blue-800 p-3 rounded-xl text-xs flex items-start gap-2">
+          <div className="bg-brand-50 text-brand-800 p-3 rounded-lg text-xs flex items-start gap-2">
             <FaIcon icon="fa-solid fa-circle-info" size={14} className="mt-0.5 shrink-0" />
             <span>
               Instagram doesn't allow apps to post for you. On mobile, tap <strong>Share</strong> and pick
@@ -157,7 +157,7 @@ export const PromoteModal: React.FC<PromoteModalProps> = ({ product, onClose }) 
         </div>
 
         {/* Actions */}
-        <div className="shrink-0 border-t border-gray-150 p-4 space-y-2.5">
+        <div className="shrink-0 border-t border-slate-200 p-4 space-y-2.5">
           {canShareImage && (
             <button
               onClick={handleShare}

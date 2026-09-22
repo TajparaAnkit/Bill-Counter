@@ -34,16 +34,16 @@ export const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40 bg-black/25 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 z-40 bg-black/25 transition-opacity"
         onClick={onClose}
       />
 
       {/* Sidebar Panel */}
       <div className="fixed top-0 right-0 z-50 h-full w-80 sm:w-96 bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-350 ease-out">
         {/* Header */}
-        <div className="p-6 border-b border-gray-150 flex justify-between items-center bg-gray-50">
+        <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-gray-50">
           <h2 className="text-xl font-bold text-gray-800 flex items-center space-x-2">
-            <FaIcon icon="fa-solid fa-box" className="text-blue-500" size={20} />
+            <FaIcon icon="fa-solid fa-box" className="text-brand-500" size={20} />
             <span>Product Details</span>
           </h2>
           <button 
@@ -57,7 +57,7 @@ export const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Image */}
-          <div className="w-full h-56 rounded-2xl overflow-hidden border border-gray-100 bg-gray-50">
+          <div className="w-full h-56 rounded-lg overflow-hidden border border-gray-100 bg-gray-50">
             {product.imageUrl ? (
               <img
                 src={product.imageUrl}
@@ -83,21 +83,21 @@ export const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({
               </h3>
             </div>
 
-            <div className="flex items-center space-x-3 bg-blue-50 p-4 rounded-xl border border-blue-100/50">
-              <div className="p-2.5 bg-blue-500 rounded-lg text-white">
+            <div className="flex items-center space-x-3 bg-brand-50 p-4 rounded-lg border border-brand-100/50">
+              <div className="p-2.5 bg-brand-500 rounded-lg text-white">
                 <FaIcon icon="fa-solid fa-indian-rupee-sign" size={20} />
               </div>
               <div>
-                <span className="text-xs font-semibold text-blue-700/80 uppercase">
+                <span className="text-xs font-semibold text-brand-700/80 uppercase">
                   Price
                 </span>
-                <p className="text-2xl font-black text-blue-700">
+                <p className="text-2xl font-bold text-brand-700">
                   ₹{product.price.toFixed(2)}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center space-x-3 bg-gray-50 p-4 rounded-xl border border-gray-100">
+            <div className="flex items-center space-x-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
               <FaIcon icon="fa-solid fa-calendar" className="text-gray-400" size={20} />
               <div>
                 <span className="text-xs text-gray-400 font-semibold block uppercase">
@@ -112,7 +112,7 @@ export const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-6 border-t border-gray-150">
+        <div className="p-6 border-t border-slate-200">
           <button
             onClick={onClose}
             className="w-full btn-secondary text-center py-2.5"

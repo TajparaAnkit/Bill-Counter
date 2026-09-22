@@ -61,7 +61,7 @@ export const GoogleButton: React.FC<GoogleButtonProps> = ({ label = 'Continue wi
       type="button"
       onClick={handleGoogle}
       disabled={loading}
-      className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl border border-slate-200 bg-white text-slate-700 font-semibold hover:bg-slate-50 hover:border-slate-300 shadow-xs transition-all disabled:opacity-60 cursor-pointer"
+      className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-lg border border-slate-200 bg-white text-slate-700 font-semibold hover:bg-slate-50 hover:border-slate-300 shadow-xs transition-all disabled:opacity-60 cursor-pointer"
     >
       {loading ? (
         <FaIcon icon="fa-solid fa-spinner" size={16} className="animate-spin text-slate-400" />
