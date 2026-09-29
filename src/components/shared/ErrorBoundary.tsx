@@ -27,15 +27,15 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
           <div className="bg-white rounded-lg shadow-sm p-8 max-w-md w-full">
             <div className="flex justify-center mb-4">
               <FaIcon icon="fa-solid fa-circle-exclamation" className="w-12 h-12 text-red-600" />
             </div>
-            <h1 className="text-2xl font-bold text-center text-gray-900 mb-2">
+            <h1 className="text-2xl font-bold text-center text-slate-900 mb-2">
               Oops! Something went wrong
             </h1>
-            <p className="text-gray-600 text-center mb-6">
+            <p className="text-slate-600 text-center mb-6">
               {this.state.error?.message || 'An unexpected error occurred'}
             </p>
             <button

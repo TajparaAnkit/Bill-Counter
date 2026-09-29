@@ -10,8 +10,9 @@ import {
   Product,
   UserProfile,
 } from '../../types';
-import { getNextBillNumber } from '../../services/db';
+import { getNextBillNumber, getNextQuotationNumber } from '../../services/db';
 import { useToast } from '../../hooks/useToast';
+import { useInvoiceTemplate } from '../../hooks/useInvoiceTemplate';
 import {
   GST_RATES,
   INDIAN_STATES,
@@ -28,6 +29,8 @@ import { Select, Combobox } from '../ui/Select';
 import { generateUpiQrDataUrl } from '../../utils/upiQr';
 import { validateGSTIN, validatePAN, panFromGSTIN } from '../../utils/validators';
 import { BRAND_NAME } from '../../config/brand';
+import { PAYMENT_METHOD_OPTIONS, getPayments, newPaymentId, summarizePayments } from '../../utils/payment';
+import { tracksStock } from '../../utils/stock';
 
 export type BillDraft = Omit<Bill, 'id' | 'userId' | 'createdAt'>;
 
@@ -39,6 +42,12 @@ interface BillFormProps {
   existingBillNos?: string[];
   onSave: (bill: BillDraft) => Promise<void>;
   onCancel: () => void;
+  docType?: 'invoice' | 'quotation';
+  // Prefill from an existing document: the one being edited, or the quotation being converted.
+  initial?: Bill | null;
+  // true = edit `initial` in place (keeps its number and payments).
+  editing?: boolean;
+  showStock?: boolean; // show stock hints on item rows (Stock feature)
 }
 
 interface Row {
@@ -82,6 +91,24 @@ const label = 'block text-sm font-semibold text-slate-600 mb-1.5';
 const linkBtn =
   'flex items-center gap-2.5 w-full text-left px-5 py-3.5 text-sm font-semibold text-brand-700 hover:bg-brand-50/60 transition-colors border-b border-slate-200';
 
+const rowFromItem = (i: BillItem, fallbackTax: number): Row => {
+  const pct = (i.discountPercent || 0) > 0;
+  return {
+    key: rowKey++,
+    productId: i.productId,
+    productName: i.productName,
+    description: i.description || '',
+    showDescription: !!i.description,
+    hsn: i.hsn || '',
+    unit: i.unit || 'PCS',
+    quantity: String(i.quantity ?? 1),
+    price: String(i.price ?? ''),
+    discountMode: pct ? 'percent' : 'amount',
+    discountValue: pct ? String(i.discountPercent) : i.discount ? String(i.discount) : '',
+    taxRate: String(i.taxRate ?? fallbackTax ?? 0),
+  };
+};
+
 const partyFromCustomer = (c: Customer): PartySnapshot => ({
   name: c.name,
   address: c.address || '',
@@ -99,44 +126,58 @@ export const BillForm: React.FC<BillFormProps> = ({
   existingBillNos = [],
   onSave,
   onCancel,
+  docType = 'invoice',
+  initial = null,
+  editing = false,
+  showStock = false,
 }) => {
   const toast = useToast();
+  const template = useInvoiceTemplate(profile);
   const defaultTax = profile?.taxEnabled ? profile.defaultTaxRate || 0 : 0;
+  const isQuote = docType === 'quotation';
+  const docName = isQuote ? 'Quotation' : 'Sales Invoice';
+  const src = initial; // shorthand for prefills below
+  // Converting a quotation starts a fresh invoice: today's date, invoice prefix, new number.
+  const keepDates = editing && !!src;
+  const initialPrefix = keepDates && src?.billPrefix ? src.billPrefix : isQuote ? 'QT' : profile?.billPrefix || 'INV';
+  const initialTerms = src?.paymentTerms ?? 0;
 
   const [mode, setMode] = useState<'edit' | 'preview'>('edit');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // ---- Party ----
-  const [customerId, setCustomerId] = useState<string | undefined>();
-  const [billTo, setBillTo] = useState<PartySnapshot>({ name: '' });
-  const [shipTo, setShipTo] = useState<PartySnapshot>({ name: '' });
+  const [customerId, setCustomerId] = useState<string | undefined>(src?.customerId);
+  const [billTo, setBillTo] = useState<PartySnapshot>(src?.billTo || (src ? { name: src.customerName, phone: src.customerPhone } : { name: '' }));
+  const [shipTo, setShipTo] = useState<PartySnapshot>(src?.shipTo || { name: src?.customerName || '' });
   const [editingShipTo, setEditingShipTo] = useState(false);
   const [editingBillTo, setEditingBillTo] = useState(false);
-  const [partyPickerOpen, setPartyPickerOpen] = useState(true);
+  const [partyPickerOpen, setPartyPickerOpen] = useState(!src);
   const [partySearch, setPartySearch] = useState('');
   const pickerRef = useRef<HTMLDivElement>(null);
 
   // ---- Invoice details ----
-  const [prefix, setPrefix] = useState((profile?.billPrefix || 'INV').toUpperCase());
-  const [seq, setSeq] = useState<string>('');
-  const [seqLoading, setSeqLoading] = useState(true);
-  const [invoiceDate, setInvoiceDate] = useState(todayISO());
-  const [paymentTerms, setPaymentTerms] = useState('0');
-  const [dueDate, setDueDate] = useState(todayISO());
-  const [vehicleNo, setVehicleNo] = useState('');
-  const [placeOfSupply, setPlaceOfSupply] = useState(profile?.state || '');
+  const [prefix, setPrefix] = useState(initialPrefix.toUpperCase());
+  const [seq, setSeq] = useState<string>(keepDates ? String(src!.billSeqNum || '') : '');
+  const [seqLoading, setSeqLoading] = useState(!keepDates);
+  const [invoiceDate, setInvoiceDate] = useState(keepDates && src?.invoiceDate ? src.invoiceDate : todayISO());
+  const [paymentTerms, setPaymentTerms] = useState(String(initialTerms));
+  const [dueDate, setDueDate] = useState(keepDates && src?.dueDate ? src.dueDate : addDaysISO(todayISO(), initialTerms));
+  const [vehicleNo, setVehicleNo] = useState(src?.vehicleNo || '');
+  const [placeOfSupply, setPlaceOfSupply] = useState(src?.placeOfSupply || profile?.state || '');
 
   // ---- Items ----
-  const [rows, setRows] = useState<Row[]>([newRow(defaultTax)]);
+  const [rows, setRows] = useState<Row[]>(() =>
+    src?.items?.length ? src.items.map((i) => rowFromItem(i, src.taxRate ?? defaultTax)) : [newRow(defaultTax)]
+  );
 
   // ---- Bill-level ----
-  const [charges, setCharges] = useState<AdditionalCharge[]>([]);
-  const [showCharges, setShowCharges] = useState(false);
-  const [billDiscount, setBillDiscount] = useState('');
-  const [showBillDiscount, setShowBillDiscount] = useState(false);
-  const [autoRoundOff, setAutoRoundOff] = useState(false);
-  const [manualRoundSign, setManualRoundSign] = useState<'+' | '-'>('+');
-  const [manualRound, setManualRound] = useState('');
+  const [charges, setCharges] = useState<AdditionalCharge[]>(src?.additionalCharges || []);
+  const [showCharges, setShowCharges] = useState(!!src?.additionalCharges?.length);
+  const [billDiscount, setBillDiscount] = useState(src?.billDiscount ? String(src.billDiscount) : '');
+  const [showBillDiscount, setShowBillDiscount] = useState(!!src?.billDiscount);
+  const [autoRoundOff, setAutoRoundOff] = useState(!!src?.autoRoundOff);
+  const [manualRoundSign, setManualRoundSign] = useState<'+' | '-'>((src?.roundOff || 0) < 0 ? '-' : '+');
+  const [manualRound, setManualRound] = useState(!src?.autoRoundOff && src?.roundOff ? String(Math.abs(src.roundOff)) : '');
 
   // ---- Payment ----
   const [amountReceived, setAmountReceived] = useState('');
@@ -144,21 +185,32 @@ export const BillForm: React.FC<BillFormProps> = ({
   const [fullyPaid, setFullyPaid] = useState(false);
 
   // ---- Extras ----
-  const [showNotes, setShowNotes] = useState(false);
-  const [notes, setNotes] = useState('');
-  const [showTerms, setShowTerms] = useState(!!profile?.invoiceNotes);
-  const [terms, setTerms] = useState(profile?.invoiceNotes || '');
+  const [showNotes, setShowNotes] = useState(!!src?.notes);
+  const [notes, setNotes] = useState(src?.notes || '');
+  const initialTermsText = src ? src.termsAndConditions || '' : profile?.invoiceNotes || '';
+  const [showTerms, setShowTerms] = useState(!!initialTermsText);
+  const [terms, setTerms] = useState(initialTermsText);
   const hasBank = !!(profile?.bankAccountNo || profile?.bankName);
-  const [showBank, setShowBank] = useState(false);
-  const [showQr, setShowQr] = useState(!!profile?.upiId);
+  const [showBank, setShowBank] = useState(!!src?.showBankDetails);
+  const [showQr, setShowQr] = useState(isQuote ? false : src && src.docType !== 'quotation' ? src.showPaymentQr !== false : !!profile?.upiId);
+
+  // Editing keeps the payments already recorded (they're managed from the invoice view).
+  const keptPayments = useMemo(() => (editing && src && !isQuote ? getPayments(src) : []), [editing, src, isQuote]);
+  // Quantity this invoice already took from stock, so editing doesn't double count it.
+  const alreadyTaken = useMemo(() => {
+    const m = new Map<string, number>();
+    if (editing && src && !isQuote && !src.cancelled) src.items.forEach((i) => i.productId && m.set(i.productId, (m.get(i.productId) || 0) + i.quantity));
+    return m;
+  }, [editing, src, isQuote]);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
 
-  // Next sequence number
+  // Next sequence number (not when editing: the document keeps its own)
   useEffect(() => {
+    if (keepDates) return;
     let cancelled = false;
     (async () => {
       try {
-        const next = await getNextBillNumber(userId, prefix);
+        const next = isQuote ? await getNextQuotationNumber(userId, prefix) : await getNextBillNumber(userId, prefix);
         if (!cancelled) setSeq(String(next.billSeqNum));
       } catch (err) {
         console.error(err);
@@ -183,7 +235,7 @@ export const BillForm: React.FC<BillFormProps> = ({
   }, [partyPickerOpen]);
 
   const billNo = `${(prefix || 'INV').trim().toUpperCase()}-${String(parseInt(seq) || 0).padStart(4, '0')}`;
-  const isDuplicateNo = existingBillNos.includes(billNo);
+  const isDuplicateNo = existingBillNos.includes(billNo) && !(editing && src?.billNo === billNo);
 
   // ---- Derived line + bill totals ----
   const computedRows = useMemo(
@@ -242,7 +294,14 @@ export const BillForm: React.FC<BillFormProps> = ({
     [items, charges, billDiscount, autoRoundOff, manualRoundSign, manualRound, interState]
   );
 
-  const received = fullyPaid ? totals.total : Math.min(totals.total, Math.max(0, parseFloat(amountReceived) || 0));
+  const keptSummary = summarizePayments(totals.total, keptPayments);
+  const received = isQuote
+    ? 0
+    : editing
+      ? keptSummary.amountPaid
+      : fullyPaid
+        ? totals.total
+        : Math.min(totals.total, Math.max(0, parseFloat(amountReceived) || 0));
   const balance = round2(totals.total - received);
   const totalQty = computedRows.reduce((s, r) => s + (parseFloat(r.row.quantity) || 0), 0);
 
@@ -322,8 +381,13 @@ export const BillForm: React.FC<BillFormProps> = ({
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
 
   const productOptions = useMemo(
-    () => products.map((p) => ({ value: p.name, label: p.name, hint: money(p.price) })),
-    [products]
+    () =>
+      products.map((p) => ({
+        value: p.name,
+        label: p.name,
+        hint: showStock && !isQuote && tracksStock(p) ? `${money(p.price)} · ${p.stock} in stock` : money(p.price),
+      })),
+    [products, showStock, isQuote]
   );
 
   const onProductName = (key: number, value: string) => {
@@ -350,8 +414,21 @@ export const BillForm: React.FC<BillFormProps> = ({
     setRows((rs) => rs.filter((r) => r.key !== key));
   };
 
-  const draft = (): BillDraft => {
+  const paymentFields = (): Pick<BillDraft, 'paymentStatus' | 'amountPaid' | 'paymentMethod' | 'paidAt' | 'payments'> => {
+    if (isQuote) return { paymentStatus: 'unpaid', amountPaid: 0, paymentMethod: undefined, paidAt: undefined, payments: [] };
+    if (editing) return { ...keptSummary, paymentMethod: keptSummary.paymentMethod, paidAt: keptSummary.paidAt || undefined };
     const status = received <= 0 ? 'unpaid' : received >= totals.total ? 'paid' : 'partial';
+    return {
+      paymentStatus: status,
+      amountPaid: received,
+      paymentMethod: received > 0 ? paymentMethod : undefined,
+      paidAt: status === 'paid' ? new Date() : undefined,
+      // Money received while creating the bill is its first "Payment In".
+      payments: received > 0 ? [{ id: newPaymentId(), amount: received, date: invoiceDate || todayISO(), method: paymentMethod }] : [],
+    };
+  };
+
+  const draft = (): BillDraft => {
     return {
       billNo,
       billSeqNum: parseInt(seq) || 0,
@@ -365,10 +442,7 @@ export const BillForm: React.FC<BillFormProps> = ({
       taxRate: totals.uniformTaxRate,
       tax: totals.tax,
       total: totals.total,
-      paymentStatus: status,
-      amountPaid: received,
-      paymentMethod: received > 0 ? paymentMethod : undefined,
-      paidAt: status === 'paid' ? new Date() : undefined,
+      ...paymentFields(),
       notes: notes.trim(),
       invoiceDate,
       dueDate,
@@ -387,7 +461,13 @@ export const BillForm: React.FC<BillFormProps> = ({
       roundOff: totals.roundOff,
       termsAndConditions: showTerms ? terms.trim() : '',
       showBankDetails: showBank && hasBank,
-      showPaymentQr: showQr,
+      showPaymentQr: !isQuote && showQr,
+      autoRoundOff,
+      ...(isQuote ? { docType: 'quotation' as const } : {}),
+      // Keep the quotation ↔ invoice link when editing either side.
+      ...(editing && src
+        ? { fromQuotationId: src.fromQuotationId, fromQuotationNo: src.fromQuotationNo, convertedBillId: src.convertedBillId, convertedBillNo: src.convertedBillNo }
+        : {}),
     };
   };
 
@@ -411,7 +491,7 @@ export const BillForm: React.FC<BillFormProps> = ({
       return;
     }
     if (isDuplicateNo) {
-      toast.error(`Invoice number ${billNo} already exists`);
+      toast.error(`${isQuote ? 'Quotation' : 'Invoice'} number ${billNo} already exists`);
       return;
     }
     try {
@@ -427,7 +507,7 @@ export const BillForm: React.FC<BillFormProps> = ({
   const previewBill = { ...draft(), createdAt: new Date() };
 
   return (
-    <div className="-m-4 sm:-m-5 bg-slate-100 min-h-[calc(100vh-6.5rem)] rounded-lg overflow-hidden">
+    <div className="-m-3 sm:-m-5 bg-slate-100 min-h-[calc(100vh-6.5rem)] rounded-lg overflow-hidden">
       {/* ===== Top bar ===== */}
       <div className="sticky top-0 z-20 flex items-center justify-between gap-3 bg-white border-b border-slate-200 px-4 sm:px-6 py-3 shadow-sm">
         <div className="flex items-center gap-3 min-w-0">
@@ -439,7 +519,10 @@ export const BillForm: React.FC<BillFormProps> = ({
             <FaIcon icon="fa-solid fa-arrow-left" size={14} />
             <span className="hidden sm:inline">Exit</span>
           </button>
-          <h2 className="text-lg font-bold text-slate-800 truncate">Create Sales Invoice</h2>
+          <h2 className="text-lg font-bold text-slate-800 truncate">
+            {editing ? 'Edit' : 'Create'} {docName}
+            {editing && src && <span className="ml-2 font-mono text-sm font-semibold text-slate-400">{src.billNo}</span>}
+          </h2>
         </div>
 
         <div className="hidden md:flex items-center bg-slate-100 rounded-lg p-1">
@@ -471,14 +554,14 @@ export const BillForm: React.FC<BillFormProps> = ({
             type="button"
             onClick={handleSave}
             disabled={isSubmitting || seqLoading}
-            className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 rounded-lg bg-brand-800 hover:bg-brand-900 text-white text-sm font-semibold shadow-sm transition-colors disabled:opacity-60"
+            className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 shadow-sm shadow-brand-600/20 text-white text-sm font-semibold shadow-sm transition-colors disabled:opacity-60"
           >
             {isSubmitting ? (
               <FaIcon icon="fa-solid fa-spinner" size={14} className="animate-spin" />
             ) : (
               <FaIcon icon="fa-solid fa-floppy-disk" size={14} />
             )}
-            <span className="hidden sm:inline">Save Sales Invoice</span>
+            <span className="hidden sm:inline">{editing ? 'Update' : 'Save'} {docName}</span>
             <span className="sm:hidden">Save</span>
           </button>
         </div>
@@ -491,12 +574,13 @@ export const BillForm: React.FC<BillFormProps> = ({
             profile={profile}
             qrUrl={qrUrl}
             qrCaption={profile?.upiId ? `Scan to pay ${money(totals.total)}` : undefined}
+            template={template}
           />
         </div>
       ) : (
         <div className="p-3 sm:p-4 space-y-3">
           {/* ===== Header panels: Bill To | Ship To | Invoice Details ===== */}
-          <div className="bg-white rounded-lg border border-slate-200 shadow-sm grid grid-cols-1 lg:grid-cols-[1fr_1fr_1.3fr] divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xs grid grid-cols-1 lg:grid-cols-[1fr_1fr_1.3fr] divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
             {/* Bill To */}
             <div className="p-4 relative" ref={pickerRef}>
               <div className="flex items-center justify-between gap-2 mb-3">
@@ -622,7 +706,7 @@ export const BillForm: React.FC<BillFormProps> = ({
 
               {/* Party picker popover */}
               {partyPickerOpen && (
-                <div className="absolute left-4 right-4 top-14 z-30 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+                <div className="absolute left-4 right-4 top-14 z-30 bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
                   <div className="p-2 border-b border-slate-200">
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
@@ -738,39 +822,43 @@ export const BillForm: React.FC<BillFormProps> = ({
 
             {/* Invoice details */}
             <div className="p-4 space-y-4">
-              <span className="text-xs font-semibold text-slate-500 block">Invoice Details</span>
+              <span className="text-xs font-semibold text-slate-500 block">{isQuote ? 'Quotation' : 'Invoice'} Details</span>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className={label}>Invoice Prefix</label>
+                  <label className={label}>{isQuote ? 'Quotation' : 'Invoice'} Prefix</label>
                   <input
                     type="text"
                     value={prefix}
                     onChange={(e) => setPrefix(e.target.value.toUpperCase())}
+                    disabled={editing}
                     maxLength={10}
                     className={`${field} uppercase`}
                   />
                 </div>
                 <div>
-                  <label className={label}>Invoice Number</label>
+                  <label className={label}>{isQuote ? 'Quotation' : 'Invoice'} Number</label>
                   <input
                     type="number"
                     min="1"
                     value={seq}
+                    aria-label={`${isQuote ? 'Quotation' : 'Invoice'} number`}
                     onChange={(e) => setSeq(e.target.value)}
+                    disabled={editing}
+                    title={editing ? 'The number of a saved document cannot change' : undefined}
                     placeholder={seqLoading ? '…' : '1'}
                     className={`${field} ${isDuplicateNo ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20' : ''}`}
                   />
                   {isDuplicateNo && <p className="mt-1 text-[11px] text-rose-600">{billNo} already exists</p>}
                 </div>
                 <div className="col-span-2 sm:col-span-1">
-                  <label className={label}>Sales Invoice Date</label>
+                  <label className={label}>{isQuote ? 'Quotation Date' : 'Sales Invoice Date'}</label>
                   <input type="date" value={invoiceDate} onChange={(e) => onInvoiceDateChange(e.target.value)} className={field} />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50/50">
                 <div>
-                  <label className={label}>Payment Terms</label>
+                  <label className={label}>{isQuote ? 'Valid For' : 'Payment Terms'}</label>
                   <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white focus-within:ring-2 focus-within:ring-brand-500/20 focus-within:border-brand-600">
                     <input
                       type="number"
@@ -783,7 +871,7 @@ export const BillForm: React.FC<BillFormProps> = ({
                   </div>
                 </div>
                 <div>
-                  <label className={label}>Due Date</label>
+                  <label className={label}>{isQuote ? 'Valid Till' : 'Due Date'}</label>
                   <input type="date" value={dueDate} min={invoiceDate} onChange={(e) => onDueDateChange(e.target.value)} className={field} />
                 </div>
               </div>
@@ -802,11 +890,11 @@ export const BillForm: React.FC<BillFormProps> = ({
           </div>
 
           {/* ===== Items table ===== */}
-          <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[1000px]">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <tr className="border-y border-slate-200 text-xs font-medium text-slate-500">
                     <th className="px-3 py-3 w-10">No</th>
                     <th className="px-3 py-3 min-w-[260px]">Items</th>
                     <th className="px-3 py-3 w-28">HSN</th>
@@ -865,6 +953,7 @@ export const BillForm: React.FC<BillFormProps> = ({
                             min="0"
                             step="any"
                             value={row.quantity}
+                            aria-label={`Item ${index + 1} quantity`}
                             onChange={(e) => updateRow(row.key, { quantity: e.target.value })}
                             className="flex-1 min-w-0 px-2.5 py-2 text-sm text-slate-800 focus:outline-none"
                           />
@@ -875,6 +964,7 @@ export const BillForm: React.FC<BillFormProps> = ({
                             {row.unit || 'PCS'}
                           </span>
                         </div>
+                        {showStock && !isQuote && <StockHint row={row} products={products} alreadyTaken={alreadyTaken} />}
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white focus-within:ring-2 focus-within:ring-brand-500/20 focus-within:border-brand-600">
@@ -884,6 +974,7 @@ export const BillForm: React.FC<BillFormProps> = ({
                             min="0"
                             step="any"
                             value={row.price}
+                            aria-label={`Item ${index + 1} price`}
                             onChange={(e) => updateRow(row.key, { price: e.target.value })}
                             placeholder="0"
                             className="flex-1 min-w-0 px-2.5 py-2 text-sm text-slate-800 focus:outline-none"
@@ -986,7 +1077,7 @@ export const BillForm: React.FC<BillFormProps> = ({
           </div>
 
           {/* ===== Bottom: extras (left) | totals (right) ===== */}
-          <div className="bg-white rounded-lg border border-slate-200 shadow-sm grid grid-cols-1 lg:grid-cols-[3fr_2fr] divide-y lg:divide-y-0 lg:divide-x divide-slate-200 overflow-hidden">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xs grid grid-cols-1 lg:grid-cols-[3fr_2fr] divide-y lg:divide-y-0 lg:divide-x divide-slate-200 overflow-hidden">
             {/* Left column */}
             <div>
               <button type="button" onClick={() => setShowNotes((v) => !v)} className={linkBtn}>
@@ -1055,6 +1146,7 @@ export const BillForm: React.FC<BillFormProps> = ({
                 </div>
               )}
 
+              {!isQuote && (
               <button type="button" onClick={() => setShowQr((v) => !v)} className={linkBtn}>
                 <FaIcon icon="fa-solid fa-qrcode" size={15} />
                 {showQr ? 'Payment QR' : 'Add Payment QR'}
@@ -1064,7 +1156,8 @@ export const BillForm: React.FC<BillFormProps> = ({
                   </span>
                 )}
               </button>
-              {showQr && !profile?.upiId && (
+              )}
+              {!isQuote && showQr && !profile?.upiId && (
                 <div className="px-5 pb-4 text-xs text-amber-600">No UPI ID saved. Add one under Settings to print a scan-to-pay QR.</div>
               )}
             </div>
@@ -1196,6 +1289,19 @@ export const BillForm: React.FC<BillFormProps> = ({
               </div>
 
               {/* Payment */}
+              {isQuote ? null : editing ? (
+                <div className="pt-3 border-t border-slate-200 space-y-2">
+                  <div className="flex justify-between text-slate-700 font-semibold">
+                    <span>Total Amount Received</span>
+                    <span>{money(received)}</span>
+                  </div>
+                  <p className="text-xs text-slate-400">Payments are added or removed from the invoice view (Record Payment).</p>
+                  <div className="flex justify-between pt-3 border-t border-slate-200 font-bold">
+                    <span className={balance > 0 ? 'text-emerald-700' : 'text-slate-500'}>Balance Amount</span>
+                    <span className={balance > 0 ? 'text-emerald-700' : 'text-slate-500'}>{money(balance)}</span>
+                  </div>
+                </div>
+              ) : (
               <div className="pt-3 border-t border-slate-200 space-y-3">
                 <div className="flex justify-between text-slate-700 font-semibold">
                   <span>Total Amount Received</span>
@@ -1209,6 +1315,7 @@ export const BillForm: React.FC<BillFormProps> = ({
                     step="any"
                     max={totals.total}
                     value={fullyPaid ? totals.total : amountReceived}
+                    aria-label="Amount received"
                     disabled={fullyPaid}
                     onChange={(e) => setAmountReceived(e.target.value)}
                     placeholder="0"
@@ -1218,13 +1325,7 @@ export const BillForm: React.FC<BillFormProps> = ({
                     variant="embedded"
                     align="end"
                     aria-label="Payment method"
-                    options={[
-                      { value: 'cash', label: 'Cash' },
-                      { value: 'upi', label: 'UPI' },
-                      { value: 'card', label: 'Card' },
-                      { value: 'bank', label: 'Bank' },
-                      { value: 'other', label: 'Other' },
-                    ]}
+                    options={PAYMENT_METHOD_OPTIONS}
                     value={paymentMethod}
                     onChange={(v) => setPaymentMethod(v as PaymentMethod)}
                     className="border-l border-slate-200 bg-white"
@@ -1239,10 +1340,24 @@ export const BillForm: React.FC<BillFormProps> = ({
                   <span className={balance > 0 ? 'text-emerald-700' : 'text-slate-500'}>{money(balance)}</span>
                 </div>
               </div>
+              )}
             </div>
           </div>
         </div>
       )}
     </div>
+  );
+};
+
+// "In stock: 12" under the quantity, red when the line asks for more than is left.
+const StockHint: React.FC<{ row: Row; products: Product[]; alreadyTaken: Map<string, number> }> = ({ row, products, alreadyTaken }) => {
+  const product = row.productId ? products.find((p) => p.id === row.productId) : undefined;
+  if (!product || !tracksStock(product)) return null;
+  const available = product.stock! + (alreadyTaken.get(product.id) || 0);
+  const short = (parseFloat(row.quantity) || 0) > available;
+  return (
+    <p className={`mt-1 text-[11px] font-medium ${short ? 'text-rose-600' : 'text-slate-400'}`}>
+      {short ? `Only ${available} in stock` : `In stock: ${available}`}
+    </p>
   );
 };

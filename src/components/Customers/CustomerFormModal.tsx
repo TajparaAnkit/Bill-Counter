@@ -206,7 +206,7 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
             type="button"
             onClick={() => submit(false)}
             disabled={isSubmitting}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-brand-800 hover:bg-brand-900 text-white text-sm font-semibold shadow-sm transition-colors disabled:opacity-60"
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 shadow-sm shadow-brand-600/20 text-white text-sm font-semibold shadow-sm transition-colors disabled:opacity-60"
           >
             {isSubmitting && !saveAndNew ? (
               <FaIcon icon="fa-solid fa-spinner" size={14} className="animate-spin" />
@@ -222,7 +222,7 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
       <form onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-y-auto">
         <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-4">
           {/* General details */}
-          <section className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+          <section className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
             <header className="px-5 py-3 border-b border-slate-200 bg-slate-50/60">
               <h3 className="text-sm font-bold text-slate-700">General Details</h3>
             </header>
@@ -362,7 +362,7 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
           </section>
 
           {/* Address */}
-          <section className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+          <section className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
             <header className="px-5 py-3 border-b border-slate-200 bg-slate-50/60">
               <h3 className="text-sm font-bold text-slate-700">Address</h3>
             </header>

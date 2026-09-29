@@ -127,7 +127,7 @@ const Panel: React.FC<{
       ref={panelRef}
       style={style}
       onKeyDown={onKeyDown}
-      className={`flex flex-col bg-white rounded-lg border border-slate-200 shadow-[0_8px_24px_rgba(15,23,42,0.12)] overflow-hidden animate-in fade-in zoom-in-95 duration-100 ${className || ''}`}
+      className={`flex flex-col bg-white rounded-xl border border-slate-200 shadow-[0_12px_32px_-8px_rgba(21,21,31,0.18)] overflow-hidden animate-in fade-in zoom-in-95 duration-100 ${className || ''}`}
       role="listbox"
     >
       {children}

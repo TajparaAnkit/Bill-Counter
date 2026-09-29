@@ -66,12 +66,12 @@ const Backdrop: React.FC<{ onClose: () => void; children: React.ReactNode }> = (
 }) =>
   createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 backdrop-blur-[2px] p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-md rounded-lg bg-white shadow-2xl animate-in fade-in zoom-in duration-200">
+      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in duration-200">
         {children}
       </div>
     </div>,

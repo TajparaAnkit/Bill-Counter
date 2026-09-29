@@ -1,7 +1,10 @@
 import React from 'react';
+import { docLabels, isQuotation as isQuote } from '../../utils/docs';
 import { Bill, UserProfile } from '../../types';
 import { BRAND_NAME } from '../../config/brand';
 import { amountInWords, formatISODate } from '../../utils/tax';
+import type { TemplateChoice } from '../../config/invoiceTemplates';
+import { TemplatePaper } from './InvoiceTemplates';
 
 // Renders the A4-style invoice "paper" in a myBillBook-like layout. Shared by
 // the invoice detail modal and the invoice editor's Preview mode. Works for
@@ -15,6 +18,7 @@ interface InvoicePaperProps {
   qrUrl?: string | null;
   qrCaption?: string;
   className?: string;
+  template?: TemplateChoice; // omitted or 'classic' = this original layout
 }
 
 const money = (n: number | undefined) =>
@@ -49,10 +53,13 @@ export const sellerFromProfile = (profile: UserProfile | null) => ({
 });
 
 const Chip: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <span className="inline-block bg-slate-200 text-slate-700 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-sm">{children}</span>
+  <span className="inline-block bg-brand-50 text-brand-800 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md">{children}</span>
 );
 
-export const InvoicePaper: React.FC<InvoicePaperProps> = ({ bill, profile, qrUrl, qrCaption, className }) => {
+export const InvoicePaper: React.FC<InvoicePaperProps> = ({ bill, profile, qrUrl, qrCaption, className, template }) => {
+  if (template && template.id !== 'classic') {
+    return <TemplatePaper id={template.id} color={template.color} bill={bill} profile={profile} qrUrl={qrUrl} qrCaption={qrCaption} className={className} />;
+  }
   const seller = sellerFromProfile(profile);
   const items = bill.items || [];
   const hasHsn = items.some((i) => i.hsn);
@@ -76,6 +83,8 @@ export const InvoicePaper: React.FC<InvoicePaperProps> = ({ bill, profile, qrUrl
   const showBank = !!bill.showBankDetails && !!(profile?.bankAccountNo || profile?.bankName);
   const showQr = bill.showPaymentQr !== false && !!qrUrl;
   const rateLabel = bill.taxRate ? ` @${bill.taxRate / 2}%` : '';
+  const labels = docLabels(bill);
+  const quote = isQuote(bill);
 
   return (
     <div
@@ -90,7 +99,7 @@ export const InvoicePaper: React.FC<InvoicePaperProps> = ({ bill, profile, qrUrl
             {seller.logoUrl ? (
               <img src={seller.logoUrl} alt="Logo" className="w-20 h-20 object-contain shrink-0" />
             ) : (
-              <div className="w-16 h-16 shrink-0 rounded-lg bg-brand-600 text-white grid place-items-center font-bold text-xl shadow">
+              <div className="w-16 h-16 shrink-0 rounded-2xl bg-linear-to-br from-brand-500 to-blue-600 text-white grid place-items-center font-bold text-xl shadow-md shadow-brand-600/25">
                 BC
               </div>
             )}
@@ -132,24 +141,28 @@ export const InvoicePaper: React.FC<InvoicePaperProps> = ({ bill, profile, qrUrl
 
           <div className="shrink-0 sm:w-72">
             <div className="flex items-center justify-between gap-3 mb-2">
-              <span className="text-base font-bold text-slate-800 uppercase">{taxTotal > 0 ? 'Tax Invoice' : 'Invoice'}</span>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 border border-slate-300 px-2 py-1">Original for Recipient</span>
+              <span className="text-base font-bold text-slate-800 uppercase">{labels.title}</span>
+              {bill.cancelled ? (
+                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 border border-rose-400 px-2 py-1">Cancelled</span>
+              ) : (
+                !quote && <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 border border-slate-300 px-2 py-1">Original for Recipient</span>
+              )}
             </div>
             <table className="w-full text-xs">
               <tbody>
                 <tr>
-                  <td className="py-0.5 text-slate-600">Invoice No.</td>
+                  <td className="py-0.5 text-slate-600">{labels.no}</td>
                   <td className="py-0.5 text-slate-400 px-2">:</td>
                   <td className="py-0.5 text-right font-bold">{bill.billNo}</td>
                 </tr>
                 <tr>
-                  <td className="py-0.5 text-slate-600">Invoice Date</td>
+                  <td className="py-0.5 text-slate-600">{labels.date}</td>
                   <td className="py-0.5 text-slate-400 px-2">:</td>
                   <td className="py-0.5 text-right font-bold">{invoiceDate}</td>
                 </tr>
                 {bill.dueDate && (
                   <tr>
-                    <td className="py-0.5 text-slate-600">Due Date</td>
+                    <td className="py-0.5 text-slate-600">{labels.due}</td>
                     <td className="py-0.5 text-slate-400 px-2">:</td>
                     <td className="py-0.5 text-right font-bold">{fmtISO(bill.dueDate)}</td>
                   </tr>
@@ -216,7 +229,7 @@ export const InvoicePaper: React.FC<InvoicePaperProps> = ({ bill, profile, qrUrl
         <div className="overflow-x-auto">
           <table className="w-full text-xs border-collapse">
             <thead>
-              <tr className="bg-brand-50 text-slate-700 text-[11px] font-bold uppercase">
+              <tr className="bg-brand-50 text-brand-900 text-[11px] font-semibold uppercase tracking-wide">
                 <th className="py-2 px-2 text-left w-12">S.No.</th>
                 <th className="py-2 px-2 text-left">Items</th>
                 {hasHsn && <th className="py-2 px-2 text-left w-16">HSN</th>}
@@ -425,11 +438,13 @@ export const InvoicePaper: React.FC<InvoicePaperProps> = ({ bill, profile, qrUrl
                   <td className="pt-1.5 pb-1 font-bold text-sm">Total Amount</td>
                   <td className="pt-1.5 pb-1 text-right font-bold text-sm">{money(bill.total)}</td>
                 </tr>
+                {!quote && (
                 <tr className="border-t border-slate-200">
                   <td className="py-1 text-slate-600">Received Amount</td>
                   <td className="py-1 text-right">{money(received)}</td>
                 </tr>
-                {received > 0 && balance > 0 && (
+                )}
+                {!quote && received > 0 && balance > 0 && (
                   <tr>
                     <td className="py-0.5 font-bold text-slate-700">Balance</td>
                     <td className="py-0.5 text-right font-bold">{money(balance)}</td>

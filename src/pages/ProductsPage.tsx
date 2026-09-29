@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Layout } from '../components/shared/Layout';
+import { PageHeader } from '../components/ui/Table';
 import { FaIcon } from '../components/shared/FaIcon';
 import { ProductTable } from '../components/Products/ProductTable';
 import { ProductFormModal } from '../components/Products/ProductFormModal';
@@ -9,6 +10,7 @@ import { BulkImportModal } from '../components/Products/BulkImportModal';
 import { PromoteModal } from '../components/Products/PromoteModal';
 import { useConfirm } from '../components/ui/confirm';
 import { useAuth } from '../hooks/useAuth';
+import { useFeature } from '../hooks/useAccount';
 import { useToast } from '../hooks/useToast';
 import { 
   getProducts,
@@ -16,7 +18,8 @@ import {
   updateProduct,
   deleteProduct,
   bulkDeleteProducts,
-  bulkImportProducts
+  bulkImportProducts,
+  StockInput
 } from '../services/db';
 import { Product } from '../types';
 
@@ -24,6 +27,10 @@ export const ProductsPage: React.FC = () => {
   const { user } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
+  const catalogOn = useFeature('catalog');
+  const importOn = useFeature('bulkImport');
+  const promoteOn = useFeature('promote');
+  const stockOn = useFeature('stock');
 
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -75,7 +82,8 @@ export const ProductsPage: React.FC = () => {
     price: number,
     file: File | null,
     hsn: string,
-    unit: string
+    unit: string,
+    stock?: StockInput
   ) => {
     if (!user) return;
     try {
@@ -88,11 +96,12 @@ export const ProductsPage: React.FC = () => {
           editingProduct.imageUrl,
           file,
           hsn,
-          unit
+          unit,
+          stock
         );
         toast.success('Product updated successfully');
       } else {
-        await addProduct(user.uid, name, price, file, hsn, unit);
+        await addProduct(user.uid, name, price, file, hsn, unit, stock);
         toast.success('Product added successfully');
       }
       loadProductsList();
@@ -158,7 +167,7 @@ export const ProductsPage: React.FC = () => {
     }
   };
 
-  const handleBulkImport = async (items: { name: string; price: number; imageUrl?: string }[]) => {
+  const handleBulkImport = async (items: Parameters<typeof bulkImportProducts>[1]) => {
     if (!user) return;
     try {
       await bulkImportProducts(user.uid, items);
@@ -171,60 +180,59 @@ export const ProductsPage: React.FC = () => {
 
   return (
     <Layout>
-      <div className="space-y-4 animate-slide-up">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-          <div>
-            <h1 className="text-xl font-bold text-slate-800">Products</h1>
-            <p className="text-slate-500 text-xs">Products and pricing used on your invoices and catalog</p>
-          </div>
-          <div className="flex items-center space-x-3.5">
+      <PageHeader
+        crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Products' }]}
+        title="Products"
+        subtitle="Products and pricing used on your invoices and online catalog."
+        actions={
+          <>
+            {catalogOn && (
+              <button onClick={handleShareCatalog} className="btn-secondary flex items-center gap-2 h-10 px-3.5 text-sm" title="Copy your public catalog link">
+                <FaIcon icon="fa-solid fa-share-nodes" size={13} />
+                Share Catalog
+              </button>
+            )}
+            {importOn && (
+              <button onClick={() => setIsImportOpen(true)} className="btn-secondary flex items-center gap-2 h-10 px-3.5 text-sm">
+                <FaIcon icon="fa-solid fa-file-import" size={13} />
+                Import
+              </button>
+            )}
             <button
-              onClick={handleShareCatalog}
-              className="btn-secondary flex items-center space-x-2 py-2.5 px-4.5"
-              title="Copy your public catalog link"
-            >
-              <FaIcon icon="fa-solid fa-share-nodes" size={16} />
-              <span>Share Catalog</span>
-            </button>
-            <button
-              onClick={() => setIsImportOpen(true)}
-              className="btn-secondary flex items-center space-x-2 py-2.5 px-4.5"
-            >
-              <FaIcon icon="fa-solid fa-download" size={16} />
-              <span>Import</span>
-            </button>
-            <button 
               onClick={() => {
                 setEditingProduct(null);
                 setIsFormOpen(true);
               }}
-              className="btn-primary flex items-center space-x-2 py-2.5 px-4.5"
+              className="btn-primary flex items-center gap-2 h-10 px-4 text-sm"
             >
-              <FaIcon icon="fa-solid fa-plus" size={16} />
-              <span>Add Product</span>
+              <FaIcon icon="fa-solid fa-plus" size={12} />
+              Add Product
             </button>
-          </div>
-        </div>
+          </>
+        }
+      />
 
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <FaIcon icon="fa-solid fa-spinner" className="animate-spin text-brand-500" size={40} />
-            <p className="text-gray-500 font-medium">Loading inventory...</p>
-          </div>
-        ) : (
-          <ProductTable 
-            products={products}
-            onView={(p) => setSelectedProduct(p)}
-            onEdit={(p) => {
-              setEditingProduct(p);
-              setIsFormOpen(true);
-            }}
-            onDelete={handleDeleteProduct}
-            onBulkDelete={handleBulkDelete}
-            onPromote={(p) => setPromoteProduct(p)}
-          />
-        )}
-      </div>
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-20 space-y-4">
+          <FaIcon icon="fa-solid fa-spinner" className="animate-spin text-brand-500" size={36} />
+          <p className="text-slate-500 font-medium">Loading inventory...</p>
+        </div>
+      ) : (
+        <ProductTable
+          products={products}
+          initialSearch={searchParams.get('q') || ''}
+          onView={(p) => setSelectedProduct(p)}
+          onEdit={(p) => {
+            setEditingProduct(p);
+            setIsFormOpen(true);
+          }}
+          onDelete={handleDeleteProduct}
+          onBulkDelete={handleBulkDelete}
+          onPromote={promoteOn ? (p) => setPromoteProduct(p) : undefined}
+          showStock={stockOn}
+          initialLowOnly={searchParams.get('stock') === 'low'}
+        />
+      )}
 
       {/* Form Modal */}
       <ProductFormModal 
@@ -235,6 +243,7 @@ export const ProductsPage: React.FC = () => {
         }}
         onSubmit={handleAddOrEditProduct}
         product={editingProduct}
+        showStock={stockOn}
       />
 
       {/* Detail Sidebar */}

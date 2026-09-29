@@ -61,7 +61,8 @@ export const CatalogPage: React.FC = () => {
   }
 
   // No profile AND no products → invalid / empty catalog link.
-  if (!profile && products.length === 0) {
+  // catalogEnabled === false → the Online Catalog feature is off for this seller.
+  if ((!profile && products.length === 0) || profile?.catalogEnabled === false) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-3 px-6 text-center">
         <FaIcon icon="fa-solid fa-store-slash" className="text-slate-300" size={48} />

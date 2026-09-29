@@ -41,14 +41,14 @@ export const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({
       {/* Sidebar Panel */}
       <div className="fixed top-0 right-0 z-50 h-full w-80 sm:w-96 bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-350 ease-out">
         {/* Header */}
-        <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-gray-50">
-          <h2 className="text-xl font-bold text-gray-800 flex items-center space-x-2">
+        <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+          <h2 className="text-xl font-bold text-slate-800 flex items-center space-x-2">
             <FaIcon icon="fa-solid fa-box" className="text-brand-500" size={20} />
             <span>Product Details</span>
           </h2>
           <button 
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1.5 rounded-full transition-all"
+            className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-full transition-all"
           >
             <FaIcon icon="fa-solid fa-xmark" size={20} />
           </button>
@@ -57,7 +57,7 @@ export const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Image */}
-          <div className="w-full h-56 rounded-lg overflow-hidden border border-gray-100 bg-gray-50">
+          <div className="w-full h-56 rounded-lg overflow-hidden border border-slate-100 bg-slate-50">
             {product.imageUrl ? (
               <img
                 src={product.imageUrl}
@@ -65,7 +65,7 @@ export const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+              <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
                 <span className="text-4xl">🧶</span>
                 <span className="text-xs mt-2 font-medium">No Image Uploaded</span>
               </div>
@@ -75,10 +75,10 @@ export const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({
           {/* Details */}
           <div className="space-y-4">
             <div>
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 Product Name
               </span>
-              <h3 className="text-xl font-bold text-gray-900 mt-1">
+              <h3 className="text-xl font-bold text-slate-900 mt-1">
                 {product.name}
               </h3>
             </div>
@@ -97,13 +97,13 @@ export const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center space-x-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
-              <FaIcon icon="fa-solid fa-calendar" className="text-gray-400" size={20} />
+            <div className="flex items-center space-x-3 bg-slate-50 p-4 rounded-lg border border-slate-100">
+              <FaIcon icon="fa-solid fa-calendar" className="text-slate-400" size={20} />
               <div>
-                <span className="text-xs text-gray-400 font-semibold block uppercase">
+                <span className="text-xs text-slate-400 font-semibold block uppercase">
                   Date Added
                 </span>
-                <span className="text-sm font-medium text-gray-700">
+                <span className="text-sm font-medium text-slate-700">
                   {formatDate(product.createdAt)}
                 </span>
               </div>

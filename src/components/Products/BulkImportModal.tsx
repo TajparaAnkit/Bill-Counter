@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import { FaIcon } from '../shared/FaIcon';
 import { useToast } from '../../hooks/useToast';
 import { uploadImageToCloudinary } from '../../services/db';
+import { downloadSampleProducts } from '../../utils/sampleProducts';
 
 interface ImportItem {
   name: string;
@@ -11,6 +12,9 @@ interface ImportItem {
   imageUrl?: string;
   hsn?: string;
   unit?: string;
+  taxRate?: number; // GST %
+  stock?: number; // opening stock (tracks stock when set)
+  lowStock?: number;
 }
 
 // Carries the filename pulled from the sheet's local path, used only to match
@@ -70,6 +74,9 @@ const buildParsedItems = (rows: Array<Record<string, unknown>>): ParsedRow[] => 
     const imageValue = String(findHeaderValue(row, ['image', 'imageurl', 'img', 'photo', 'picture', 'link']) || '').trim();
     const hsn = String(findHeaderValue(row, ['hsn', 'hsncode', 'hsn/sac', 'sac', 'saccode']) || '').trim();
     const unit = String(findHeaderValue(row, ['unit', 'uom', 'units']) || '').trim().toUpperCase();
+    const taxRate = parsePrice(findHeaderValue(row, ['gst', 'gstrate', 'gstpercent', 'tax', 'taxrate', 'gstrateinpercent']));
+    const stock = parsePrice(findHeaderValue(row, ['stock', 'openingstock', 'qty', 'quantity', 'currentstock']));
+    const lowStock = parsePrice(findHeaderValue(row, ['lowstock', 'lowstockalert', 'reorderlevel', 'minstock', 'alertat']));
 
     if (!name) return;
     if (!priceValue || priceValue <= 0) return;
@@ -86,6 +93,10 @@ const buildParsedItems = (rows: Array<Record<string, unknown>>): ParsedRow[] => 
       imageUrl,
       hsn: hsn || undefined,
       unit: unit || undefined,
+      taxRate: taxRate != null && taxRate >= 0 ? taxRate : undefined,
+      // Stock is tracked only when an opening stock is given.
+      stock: stock != null ? stock : undefined,
+      lowStock: stock != null && lowStock != null && lowStock >= 0 ? lowStock : undefined,
       imageFileName,
     });
   });
@@ -207,13 +218,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
       }
 
       // Drop the internal imageFileName field — onImport only wants name/price/imageUrl.
-      const itemsToImport: ImportItem[] = parsedItems.map(({ name, price, imageUrl, hsn, unit }) => ({
-        name,
-        price,
-        imageUrl,
-        hsn,
-        unit,
-      }));
+      const itemsToImport: ImportItem[] = parsedItems.map(({ imageFileName: _file, ...item }) => item);
 
       await onImport(itemsToImport);
       toast.success(`Successfully imported ${parsedItems.length} item(s).`);
@@ -230,16 +235,16 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-      <div className="flex flex-col bg-white rounded-lg w-full max-w-lg max-h-[90vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-        <div className="shrink-0 flex justify-between items-center bg-gray-50 border-b border-slate-200 p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 backdrop-blur-[2px] p-4">
+      <div className="flex flex-col bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+        <div className="shrink-0 flex justify-between items-center bg-slate-50 border-b border-slate-200 p-4">
           <div>
-            <h2 className="text-lg font-bold text-gray-800">Bulk Import Products</h2>
+            <h2 className="text-lg font-bold text-slate-800">Bulk Import Products</h2>
             <p className="text-sm text-slate-500 mt-0.5">Import multiple products instantly</p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1.5 rounded-full transition-colors"
+            className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-full transition-colors"
           >
             <FaIcon icon="fa-solid fa-xmark" size={20} />
           </button>
@@ -258,10 +263,10 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
             <label className="flex items-center gap-3 p-3 bg-white border-2 border-dashed border-green-300 rounded-lg cursor-pointer hover:border-green-500 hover:bg-green-50/50 transition-all">
               <FaIcon icon="fa-solid fa-images" size={20} className="text-green-600 shrink-0" />
               <div className="flex-1 text-left">
-                <div className="text-sm font-semibold text-gray-700">
+                <div className="text-sm font-semibold text-slate-700">
                   {selectedImages.length > 0 ? `${selectedImages.length} image(s) selected` : 'Click to select images'}
                 </div>
-                <div className="text-xs text-gray-500 mt-0.5">JPG, PNG, WebP supported</div>
+                <div className="text-xs text-slate-500 mt-0.5">JPG, PNG, WebP supported</div>
               </div>
               <input
                 type="file"
@@ -283,24 +288,31 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
             )}
           </div>
 
-          <div className="bg-brand-50 text-brand-800 p-3.5 rounded-lg text-xs flex items-start space-x-2">
-            <FaIcon icon="fa-solid fa-circle-info" size={16} className="mt-0.5 shrink-0" />
-            <div>
-              <span className="font-bold">Supported format:</span> A sheet with columns named <span className="font-semibold">name</span>, <span className="font-semibold">price</span>, and optionally <span className="font-semibold">hsn</span>, <span className="font-semibold">unit</span> and <span className="font-semibold">image</span> (an http/https URL — local file paths are ignored).
-              <pre className="mt-1 bg-white/50 p-2 rounded text-[10px] font-mono select-all">
-{`name,price,hsn,unit,image
-T-Shirt,450,6109,PCS,https://example.com/tshirt.jpg
-Coffee Mug,299,,PCS,`}
-              </pre>
+          <div className="bg-brand-50 text-brand-800 p-3.5 rounded-lg text-xs space-y-2.5">
+            <div className="flex items-start gap-2">
+              <FaIcon icon="fa-solid fa-circle-info" size={16} className="mt-0.5 shrink-0" />
+              <div>
+                <span className="font-bold">Columns:</span> <span className="font-semibold">name</span> and <span className="font-semibold">price</span> are required. Optional:{' '}
+                <span className="font-semibold">unit</span>, <span className="font-semibold">hsn</span>, <span className="font-semibold">gst</span> (%),{' '}
+                <span className="font-semibold">stock</span>, <span className="font-semibold">low_stock</span> and <span className="font-semibold">image</span> (https link or a file name matched to the images picked above).
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={downloadSampleProducts}
+              className="w-full flex items-center justify-center gap-2 rounded-lg bg-white border border-brand-200 text-brand-700 font-semibold py-2 hover:bg-brand-50 cursor-pointer"
+            >
+              <FaIcon icon="fa-solid fa-file-excel" size={14} />
+              Download sample Excel
+            </button>
           </div>
 
-          <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-10 cursor-pointer hover:border-brand-500 hover:bg-brand-50/30 transition-all text-center">
-            <FaIcon icon={isSubmitting ? 'fa-solid fa-spinner' : 'fa-solid fa-upload'} size={40} className={`text-gray-400 mb-2 ${isSubmitting ? 'animate-spin' : ''}`} />
-            <span className="text-sm font-semibold text-gray-700">
+          <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-lg p-10 cursor-pointer hover:border-brand-500 hover:bg-brand-50/30 transition-all text-center">
+            <FaIcon icon={isSubmitting ? 'fa-solid fa-spinner' : 'fa-solid fa-upload'} size={40} className={`text-slate-400 mb-2 ${isSubmitting ? 'animate-spin' : ''}`} />
+            <span className="text-sm font-semibold text-slate-700">
               {isSubmitting ? 'Importing...' : 'Click to upload Excel or CSV file'}
             </span>
-            <span className="text-xs text-gray-400 mt-1">Supports .xlsx, .xls, and .csv files</span>
+            <span className="text-xs text-slate-400 mt-1">Supports .xlsx, .xls, and .csv files</span>
             <input
               type="file"
               accept=".csv,.xlsx,.xls"

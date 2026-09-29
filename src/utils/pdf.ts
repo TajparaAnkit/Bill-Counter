@@ -14,7 +14,9 @@ import { BRAND_NAME } from '../config/brand';
 import { Bill, UserProfile } from '../types';
 import { amountInWords } from './tax';
 import { INVOICE_QR, INVOICE_QR_CAPTION } from '../assets/qr';
+import { docLabels, isQuotation } from './docs';
 import { generateUpiQrDataUrl } from './upiQr';
+import type { TemplateChoice } from '../config/invoiceTemplates';
 
 const CDN = {
   jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
@@ -36,7 +38,7 @@ const loadScript = (src: string): Promise<void> =>
     document.body.appendChild(s);
   });
 
-const ensureJsPDF = async (): Promise<any> => {
+export const ensureJsPDF = async (): Promise<any> => {
   const w = window as any;
   if (!w.jspdf?.jsPDF) await loadScript(CDN.jspdf);
   if (!w.jspdf?.jsPDF) throw new Error('jsPDF failed to load');
@@ -77,7 +79,7 @@ const money = (n: number | undefined) => 'Rs. ' + num(n);
 // Rasterize any image source (SVG/PNG/JPEG data URL or hosted URL) to a PNG
 // data URL via an offscreen canvas, preserving aspect ratio inside a box.
 // Returns the PNG plus its rendered width/height ratio so callers can place it.
-const toPng = (
+export const toPng = (
   src: string,
   maxSide = 400
 ): Promise<{ dataUrl: string; w: number; h: number } | null> =>
@@ -127,13 +129,13 @@ const toPngSquare = (src: string, size = 240): Promise<string> =>
     img.src = src;
   });
 
-const NAVY: [number, number, number] = [75, 62, 207]; // brand-700
-const DARK: [number, number, number] = [30, 41, 59]; // slate-800
-const GRAY: [number, number, number] = [100, 116, 139]; // slate-500
-const LIGHT: [number, number, number] = [226, 232, 240]; // slate-200
-const CHIP: [number, number, number] = [226, 232, 240]; // slate-200
-const HEAD: [number, number, number] = [233, 231, 255]; // brand-100
-const BAND: [number, number, number] = [241, 245, 249]; // slate-100
+const NAVY: [number, number, number] = [91, 50, 214]; // brand-700 #5b32d6
+const DARK: [number, number, number] = [37, 37, 49]; // slate-800 #252531
+const GRAY: [number, number, number] = [112, 112, 126]; // slate-500 #70707e
+const LIGHT: [number, number, number] = [231, 231, 238]; // slate-200 #e7e7ee
+const CHIP: [number, number, number] = [232, 232, 255]; // brand-100 #e8e8ff
+const HEAD: [number, number, number] = [232, 232, 255]; // brand-100 #e8e8ff
+const BAND: [number, number, number] = [243, 243, 249]; // slate-100 #f3f3f9
 
 // Builds the invoice document and returns the jsPDF instance (not saved).
 const buildInvoiceDoc = async (bill: PdfBill, profile: PdfProfile | null) => {
@@ -176,7 +178,7 @@ const buildInvoiceDoc = async (bill: PdfBill, profile: PdfProfile | null) => {
     doc.addImage(logo.dataUrl, 'PNG', M, y, lw, lh);
     textX = M + logoBox + 4;
   } else {
-    // Bill Counter mark fallback
+    // myBillCounter mark fallback
     doc.setFillColor(...NAVY);
     doc.roundedRect(M, y, 18, 18, 3, 3, 'F');
     setText(12, 'bold', [255, 255, 255]);
@@ -206,20 +208,25 @@ const buildInvoiceDoc = async (bill: PdfBill, profile: PdfProfile | null) => {
   const metaX = rightX - 72;
   let my = y + 4;
   setText(12, 'bold', DARK);
-  doc.text((bill.tax || 0) > 0 ? 'TAX INVOICE' : 'INVOICE', metaX, my);
-  setText(6.5, 'bold', GRAY);
-  const badge = 'ORIGINAL FOR RECIPIENT';
-  const bw = doc.getTextWidth(badge) + 4;
-  doc.setDrawColor(...LIGHT);
-  doc.rect(rightX - bw, my - 3.8, bw, 5.2);
-  doc.text(badge, rightX - bw / 2, my - 0.2, { align: 'center' });
+  const labels = docLabels(bill);
+  const quote = isQuotation(bill);
+  doc.text(labels.title.toUpperCase(), metaX, my);
+  const badge = bill.cancelled ? 'CANCELLED' : quote ? '' : 'ORIGINAL FOR RECIPIENT';
+  if (badge) {
+    const badgeColor: [number, number, number] = bill.cancelled ? [225, 29, 72] : GRAY;
+    setText(6.5, 'bold', badgeColor);
+    const bw = doc.getTextWidth(badge) + 4;
+    doc.setDrawColor(...(bill.cancelled ? badgeColor : LIGHT));
+    doc.rect(rightX - bw, my - 3.8, bw, 5.2);
+    doc.text(badge, rightX - bw / 2, my - 0.2, { align: 'center' });
+  }
   my += 7;
 
   const meta: [string, string][] = [
-    ['Invoice No.', bill.billNo],
-    ['Invoice Date', bill.invoiceDate ? formatISO(bill.invoiceDate) : formatDate(bill.createdAt)],
+    [labels.no, bill.billNo],
+    [labels.date, bill.invoiceDate ? formatISO(bill.invoiceDate) : formatDate(bill.createdAt)],
   ];
-  if (bill.dueDate) meta.push(['Due Date', formatISO(bill.dueDate)]);
+  if (bill.dueDate) meta.push([labels.due, formatISO(bill.dueDate)]);
   if (bill.vehicleNo) meta.push(['Vehicle No.', bill.vehicleNo]);
   meta.forEach(([k, v]) => {
     setText(8.5, 'normal', GRAY);
@@ -365,9 +372,11 @@ const buildInvoiceDoc = async (bill: PdfBill, profile: PdfProfile | null) => {
   doc.setDrawColor(...LIGHT);
   doc.setLineWidth(0.2);
   doc.line(labelX, ty - 4, rightX, ty - 4);
-  line('Received Amount', money(bill.amountPaid || 0));
-  const balance = Math.max(0, (bill.total || 0) - (bill.amountPaid || 0));
-  if ((bill.amountPaid || 0) > 0 && balance > 0) line('Balance', money(balance), true, 8.5);
+  if (!quote) {
+    line('Received Amount', money(bill.amountPaid || 0));
+    const balance = Math.max(0, (bill.total || 0) - (bill.amountPaid || 0));
+    if ((bill.amountPaid || 0) > 0 && balance > 0) line('Balance', money(balance), true, 8.5);
+  }
 
   // Amount in words (right aligned)
   ty += 3;
@@ -467,13 +476,21 @@ const buildInvoiceDoc = async (bill: PdfBill, profile: PdfProfile | null) => {
   return doc;
 };
 
+// Classic (no template, or 'classic') is the original layout above, unchanged.
+// Other designs live in pdfTemplates.ts and are only loaded when used.
+const buildDoc = async (bill: PdfBill, profile: PdfProfile | null, template?: TemplateChoice) =>
+  template && template.id !== 'classic'
+    ? (await import('./pdfTemplates')).buildTemplateDoc(bill, profile, template)
+    : buildInvoiceDoc(bill, profile);
+
 // Builds and triggers a download of the invoice PDF.
 export const generateInvoicePDF = async (
   bill: PdfBill,
   profile: PdfProfile | null,
-  filename: string
+  filename: string,
+  template?: TemplateChoice
 ) => {
-  const doc = await buildInvoiceDoc(bill, profile);
+  const doc = await buildDoc(bill, profile, template);
   doc.save(filename);
 };
 
@@ -482,14 +499,210 @@ export const generateInvoicePDF = async (
 export const generateInvoicePdfFile = async (
   bill: PdfBill,
   profile: PdfProfile | null,
-  filename: string
+  filename: string,
+  template?: TemplateChoice
 ): Promise<File | null> => {
   try {
-    const doc = await buildInvoiceDoc(bill, profile);
+    const doc = await buildDoc(bill, profile, template);
     const blob: Blob = doc.output('blob');
     return new File([blob], filename, { type: 'application/pdf' });
   } catch (err) {
     console.error('Failed to build invoice PDF file:', err);
     return null;
   }
+};
+
+// ==========================================
+// PARTY STATEMENT (LEDGER)
+// ==========================================
+// Layout follows myBillBook's Party Ledger: business header, "To" party block,
+// period + receivable box, then Date / Voucher / Sr No / Credit / Debit /
+// Balance table and a closing-balance footer.
+
+export interface PdfStatementParty {
+  name: string;
+  phone?: string;
+  address?: string;
+  gstin?: string;
+}
+
+export interface PdfStatement {
+  party: PdfStatementParty;
+  periodLabel: string; // e.g. "01 Apr 2026 - 28 Sep 2026"
+  entries: { date: Date; voucher: string; srNo: string; debit: number; credit: number; balance: number }[];
+  totalDebit: number;
+  totalCredit: number;
+  closingBalance: number;
+}
+
+const drCr = (n: number) => (Math.abs(n) < 0.005 ? num(0) : `${num(Math.abs(n))} ${n > 0 ? 'Dr' : 'Cr'}`);
+const shortDate = (d: Date) => d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+const buildStatementDoc = async (st: PdfStatement, profile: PdfProfile | null) => {
+  const jsPDF = await ensureJsPDF();
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const M = 14;
+  const rightX = pageW - M;
+
+  const setText = (size: number, style: 'normal' | 'bold' = 'normal', color: [number, number, number] = DARK) => {
+    doc.setFont('helvetica', style);
+    doc.setFontSize(size);
+    doc.setTextColor(...color);
+  };
+
+  // ---- Business header ----
+  const sellerName = profile?.businessName?.trim() || BRAND_NAME;
+  let y = M + 2;
+  let textX = M;
+  const logo = profile?.logoUrl ? await toPng(profile.logoUrl, 300) : null;
+  if (logo) {
+    const box = 16;
+    const ratio = logo.w / logo.h;
+    doc.addImage(logo.dataUrl, 'PNG', M, y, ratio >= 1 ? box : box * ratio, ratio >= 1 ? box / ratio : box);
+    textX = M + box + 4;
+  }
+  setText(13, 'bold', NAVY);
+  doc.text(sellerName, textX, y + 5);
+  setText(8.5, 'normal', GRAY);
+  const sellerBits = [
+    profile?.phone ? `Mobile: ${profile.phone}` : '',
+    profile?.gstRegistered !== false && profile?.gstin ? `GSTIN: ${profile.gstin}` : '',
+  ].filter(Boolean);
+  if (sellerBits.length) doc.text(sellerBits.join('   |   '), textX, y + 10);
+
+  setText(12, 'bold', DARK);
+  doc.text('PARTY LEDGER', rightX, y + 5, { align: 'right' });
+  setText(8.5, 'normal', GRAY);
+  doc.text(st.periodLabel, rightX, y + 10, { align: 'right' });
+
+  y += 20;
+  doc.setDrawColor(...LIGHT);
+  doc.setLineWidth(0.3);
+  doc.line(M, y, rightX, y);
+  y += 7;
+
+  // ---- "To" party block (left) + receivable box (right) ----
+  setText(8, 'bold', GRAY);
+  doc.text('To,', M, y);
+  setText(10.5, 'bold', DARK);
+  doc.text(st.party.name.toUpperCase(), M, y + 5);
+  setText(8.5, 'normal', DARK);
+  let py = y + 10;
+  if (st.party.address) {
+    const lines = doc.splitTextToSize(st.party.address, 100) as string[];
+    doc.text(lines, M, py);
+    py += lines.length * 3.8;
+  }
+  if (st.party.phone) {
+    doc.text(`Mobile: ${st.party.phone}`, M, py);
+    py += 3.8;
+  }
+  if (st.party.gstin) {
+    doc.text(`GSTIN: ${st.party.gstin}`, M, py);
+    py += 3.8;
+  }
+
+  const boxW = 70;
+  const boxX = rightX - boxW;
+  const receivable = st.closingBalance >= 0;
+  doc.setFillColor(...HEAD);
+  doc.setDrawColor(...HEAD);
+  doc.roundedRect(boxX, y - 4, boxW, 18, 2, 2, 'F');
+  setText(8, 'bold', GRAY);
+  doc.text(receivable ? 'Total Receivable' : 'Total Payable', boxX + 4, y + 1.5);
+  setText(13, 'bold', receivable ? DARK : NAVY);
+  doc.text(money(Math.abs(st.closingBalance)), boxX + 4, y + 9.5);
+
+  y = Math.max(py, y + 16) + 5;
+
+  // ---- Ledger table ----
+  const body = st.entries.map((e) => [
+    shortDate(e.date),
+    e.voucher,
+    e.srNo || '-',
+    e.credit ? num(e.credit) : '-',
+    e.debit ? num(e.debit) : '-',
+    drCr(e.balance),
+  ]);
+
+  (doc as any).autoTable({
+    startY: y,
+    head: [['DATE', 'VOUCHER', 'SR NO', 'CREDIT', 'DEBIT', 'BALANCE']],
+    body,
+    foot: [['', 'TOTAL', '', num(st.totalCredit), num(st.totalDebit), drCr(st.closingBalance)]],
+    theme: 'plain',
+    styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 2.2, textColor: DARK, lineColor: LIGHT, lineWidth: { bottom: 0.2 } },
+    headStyles: { fillColor: HEAD, textColor: DARK, fontStyle: 'bold', fontSize: 7.5, lineWidth: 0 },
+    footStyles: { fillColor: BAND, textColor: DARK, fontStyle: 'bold', lineWidth: 0 },
+    columnStyles: {
+      0: { cellWidth: 26 },
+      1: { cellWidth: 36 },
+      2: { cellWidth: 28 },
+      3: { halign: 'right' },
+      4: { halign: 'right' },
+      5: { halign: 'right', fontStyle: 'bold' },
+    },
+    didParseCell: (data: any) => {
+      if (data.section !== 'head' && data.section !== 'foot') return;
+      if (data.column.index >= 3) data.cell.styles.halign = 'right';
+    },
+    margin: { left: M, right: M },
+  });
+
+  // ---- Closing balance ----
+  let ty = ((doc as any).lastAutoTable?.finalY || y + 30) + 8;
+  if (ty > pageH - 30) {
+    doc.addPage();
+    ty = M + 6;
+  }
+  setText(9.5, 'bold', DARK);
+  doc.text('Closing Balance', rightX - 70, ty);
+  doc.text(drCr(st.closingBalance), rightX, ty, { align: 'right' });
+  setText(8, 'normal', GRAY);
+  doc.text(
+    receivable ? 'Amount to be collected from the party' : 'Amount to be paid to the party',
+    rightX,
+    ty + 4.5,
+    { align: 'right' }
+  );
+
+  // ---- Footer on every page ----
+  const pages = doc.getNumberOfPages();
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i);
+    setText(7.5, 'normal', GRAY);
+    doc.text(`Generated with ${BRAND_NAME}`, M, pageH - 8);
+    doc.text(`Page ${i} of ${pages}`, rightX, pageH - 8, { align: 'right' });
+  }
+
+  return doc;
+};
+
+export const generateStatementPDF = async (st: PdfStatement, profile: PdfProfile | null, filename: string) => {
+  const doc = await buildStatementDoc(st, profile);
+  doc.save(filename);
+};
+
+export const generateStatementPdfFile = async (
+  st: PdfStatement,
+  profile: PdfProfile | null,
+  filename: string
+): Promise<File | null> => {
+  try {
+    const doc = await buildStatementDoc(st, profile);
+    const blob: Blob = doc.output('blob');
+    return new File([blob], filename, { type: 'application/pdf' });
+  } catch (err) {
+    console.error('Failed to build statement PDF file:', err);
+    return null;
+  }
+};
+
+// Opens the statement in a new tab with the browser print dialog.
+export const printStatementPDF = async (st: PdfStatement, profile: PdfProfile | null) => {
+  const doc = await buildStatementDoc(st, profile);
+  doc.autoPrint();
+  window.open(doc.output('bloburl'), '_blank');
 };

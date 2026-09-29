@@ -135,7 +135,7 @@ export const LoginForm: React.FC = () => {
       <button
         type="submit"
         disabled={loading}
-        className="w-full py-3 bg-brand-800 hover:bg-brand-900 text-white font-semibold rounded-lg hover:shadow-sm.5 transition-all duration-200 disabled:opacity-60 disabled:pointer-events-none flex items-center justify-center gap-2 cursor-pointer"
+        className="w-full py-3 bg-brand-600 hover:bg-brand-700 shadow-sm shadow-brand-600/20 text-white font-semibold rounded-lg hover:shadow-sm.5 transition-all duration-200 disabled:opacity-60 disabled:pointer-events-none flex items-center justify-center gap-2 cursor-pointer"
       >
         {loading ? (
           <>
