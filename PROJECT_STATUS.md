@@ -1,7 +1,7 @@
-# 🎯 PROJECT STATUS - Bill Counter
+# 🎯 PROJECT STATUS - myBillCounter
 
 **Last Updated:** September 8, 2026
-**Project:** Bill Counter - SaaS inventory & billing platform
+**Project:** myBillCounter - SaaS inventory & billing platform
 **Location:** `d:\project\Bill-Counter`
 **Live Target:** GitHub Pages (`npm run deploy`)
 
@@ -16,7 +16,7 @@
 | 3. Products | CRUD, detail drawer, bulk import (Excel/CSV), bulk delete, Cloudinary images | ✅ Complete |
 | 4. Bills | Invoice builder, discount & tax, payment tracking, PDF export, UPI QR | ✅ Complete |
 | 5. Dashboard & Settings | Live metrics, business profile, invoice prefix / notes / tax | ✅ Complete |
-| Extras | Google Sign-In, customer directory, public Storefront Catalog, Promote Product, Knowledge Base, GitHub Pages deploy | ✅ Complete |
+| Extras | Customer directory, public Storefront Catalog, Promote Product, Knowledge Base, GitHub Pages deploy | ✅ Complete |
 | 6. GST Invoicing | myBillBook-style full-page invoice editor and customer (party) form | ✅ Complete (Sep 8, 2026) |
 | 7. Manage Business + Invoice Layout | Settings rework (logo, signature, GST/PAN, business type, extra details) and myBillBook-style invoice/PDF layout | ✅ Complete (Sep 8, 2026) |
 | 8. App Theme | Flat indigo/orange theme, Source Sans 3, compact controls and cards (catalog untouched) | ✅ Complete (Sep 8, 2026) |
@@ -47,9 +47,9 @@ Cleanup below).
 ### Theme & App Shell
 - Tokens in `src/index.css` `@theme`: `brand` (indigo) and `accent` (orange) scales, Source Sans 3 as `--font-sans`
 - Flat component utilities: `.btn-primary`, `.btn-secondary`, `.btn-accent`, `.card`, `.input-field` (no gradients / heavy shadows, 6–8 px radii). All pages use `brand-*`; `blue-*` remains only in the public catalog themes and the promo-image canvas. PDF accent colours follow the brand indigo.
-- Layout (`Layout.tsx`): fixed 240 px navy sidebar + slim white header; content renders in a white bordered card on `#f5f6fa`; sidebar becomes a slide-over drawer under `lg`
-- Sidebar (`Sidebar.tsx`): business logo/name/phone block; **Create Sales Invoice** split button (`/bills?new=1`) whose chevron menu offers Add Customer (`/customers?new=1`), Add Product (`/products?new=1`) and Sales Invoice — each page opens its add form when it sees `?new=1`; collapsible groups with chevrons — General: Dashboard, Customers (All / Add), Products (All / Add), Sales (Sales Invoices / Create Sales Invoice); Business: Settings (Business Settings / Knowledge Base); the group owning the current route auto-expands; rounded active highlight; **Logout** pinned at the bottom
-- Header (`Header.tsx` + `UserMenu.tsx`): hamburger on mobile, wordmark on mobile, signed-in user's name + email + avatar (Google photo or initials). No dropdown menu.
+- Layout (`Layout.tsx`): fixed 256 px light sidebar (collapsible to a 76 px icon rail, remembered in localStorage) + sticky top bar; pages render as cards directly on the `#f9fafd` canvas; sidebar becomes a slide-over drawer under `lg`
+- Sidebar (`Sidebar.tsx`, links in `config/nav.ts`): myBillCounter brand; flat links under collapsible groups — Overview: Dashboard; Sales: Sales Invoices, Customers, Products; Business: Settings, Help Center; violet active pill with a left bar; business card with logout icon at the bottom
+- Header (`Header.tsx` + `UserMenu.tsx`): hamburger + wordmark on mobile; global search (Ctrl/⌘+K) that jumps to pages/actions or searches invoices, customers and products via `?q=`; **New Invoice** split button whose menu offers Add Customer / Add Product (pages open their add form on `?new=1`); Help Center link; avatar (profile photo or initials) with name/email tooltip
 - Page titles standardised to one `text-xl` heading (Dashboard, Products, Customers, Sales Invoices, Business Settings, Knowledge Base)
 - User-facing wording: **Customers / Add Customer** and **Products / Add Product** everywhere (sidebar, headings, toasts, dialogs, Knowledge Base). Invoice line items keep the word *Item*; the Bill To picker keeps *Party*. Routes, Firestore collections and code identifiers are unchanged.
 
@@ -62,7 +62,7 @@ Cleanup below).
 - `dropdown-menu.tsx` (shadcn/Radix) for action menus (sidebar create menu, invoice row menu); `confirm.tsx` confirm/prompt provider; `Pagination.tsx`
 
 ### Authentication
-- Email/password register & login, plus Google Sign-In
+- Email/password register & login with **Forgot password?** reset (Google Sign-In was removed — not supported)
 - Field-level validation with real-time error clearing; Firebase errors mapped to friendly messages (`validators.ts`)
 - Loading spinners and disabled buttons during submission; toast notifications; global `ErrorBoundary`; `ProtectedRoute`
 - Logout lives in the sidebar
@@ -180,7 +180,7 @@ Cleanup below).
 ## ⏸️ On Hold
 
 ### e-Way Bill (planned Sep 11, 2026, paused by owner)
-Real e-way bill numbers come only from the NIC e-way bill system, whose API needs a GSP subscription and server-side credentials. Bill Counter has no backend, so the agreed plan was two-phase:
+Real e-way bill numbers come only from the NIC e-way bill system, whose API needs a GSP subscription and server-side credentials. myBillCounter has no backend, so the agreed plan was two-phase:
 
 - **Phase A (no backend):** "Enable e-Way Bill" toggle in Business Settings (off by default; when off nothing e-way related is shown) with threshold (₹50,000), default transporter and mode. Invoice editor gains a collapsible e-Way Bill section: Part A prefilled from the invoice (GSTINs, addresses + pincodes, doc no/date, value, HSN) plus dispatch-from, sub-type and document type; Part B per myBillBook (Transporter ID/Name, distance, mode, vehicle type, vehicle no., transport doc no/date). "Download e-Way Bill JSON" in the NIC bulk-upload format for the portal; then record EWB number (12 digits), date, valid-until (1 day / 200 km, overridable) and status. Print block on invoice/PDF; "e-Way Bills" page under Sales; docs + Playwright coverage of the toggle.
 - **Phase B (later, optional):** Cloud Function on Firebase Blaze holding GSP credentials to generate / update Part B / extend / cancel via the NIC API. Needs Blaze upgrade, a GSP contract and portal API registration.

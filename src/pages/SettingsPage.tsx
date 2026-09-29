@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Layout } from '../components/shared/Layout';
+import { PageHeader } from '../components/ui/Table';
 import { useAuth } from '../hooks/useAuth';
+import { useAccount, useFeature } from '../hooks/useAccount';
+import { TEMPLATES, TEMPLATE_COLORS, allowedTemplates, clientCanChoose, getTemplate, resolveTemplate } from '../config/invoiceTemplates';
+import { TemplateThumb } from '../components/Bills/TemplateThumb';
+import type { InvoiceTemplateId } from '../types';
 import { useToast } from '../hooks/useToast';
 import { getBusinessProfile, updateBusinessProfile, uploadImageToCloudinary } from '../services/db';
 import { FaIcon } from '../components/shared/FaIcon';
@@ -15,10 +20,10 @@ const field =
 const errCls = 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20';
 
 const Section: React.FC<{ title: string; subtitle?: string; children: React.ReactNode }> = ({ title, subtitle, children }) => (
-  <section className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-    <header className="px-5 py-3 border-b border-slate-200 bg-slate-50/60">
-      <h3 className="text-sm font-bold text-slate-700">{title}</h3>
-      {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+  <section className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+    <header className="px-5 pt-5 pb-4 border-b border-slate-100">
+      <h3 className="text-base font-bold text-slate-900">{title}</h3>
+      {subtitle && <p className="text-[13px] text-slate-500 mt-0.5">{subtitle}</p>}
     </header>
     <div className="p-5 space-y-5">{children}</div>
   </section>
@@ -122,6 +127,11 @@ const ImageUpload: React.FC<{
 
 export const SettingsPage: React.FC = () => {
   const { user } = useAuth();
+  const statementAllowed = useFeature('partyStatement');
+  const { account } = useAccount();
+  const canPickTemplate = clientCanChoose(account);
+  const [invoiceTemplate, setInvoiceTemplate] = useState<InvoiceTemplateId>('classic');
+  const [invoiceColor, setInvoiceColor] = useState('');
   const toast = useToast();
 
   // Manage Business
@@ -150,6 +160,9 @@ export const SettingsPage: React.FC = () => {
   const [billPrefix, setBillPrefix] = useState('');
   const [taxEnabled, setTaxEnabled] = useState(false);
   const [defaultTaxRate, setDefaultTaxRate] = useState('');
+
+  // Optional features
+  const [partyStatementEnabled, setPartyStatementEnabled] = useState(false);
 
   // Bank
   const [bankName, setBankName] = useState('');
@@ -191,12 +204,16 @@ export const SettingsPage: React.FC = () => {
           setBillPrefix(p.billPrefix || '');
           setTaxEnabled(!!p.taxEnabled);
           setDefaultTaxRate(p.defaultTaxRate != null ? String(p.defaultTaxRate) : '');
+          setPartyStatementEnabled(!!p.partyStatementEnabled);
           setBankName(p.bankName || '');
           setBankAccountNo(p.bankAccountNo || '');
           setBankIfsc(p.bankIfsc || '');
           setBankBranch(p.bankBranch || '');
           setBankAccountHolder(p.bankAccountHolder || '');
         }
+        const current = resolveTemplate(account, p);
+        setInvoiceTemplate(current.id);
+        setInvoiceColor(current.color);
       } catch (err) {
         toast.error('Failed to load settings profile');
       } finally {
@@ -277,11 +294,13 @@ export const SettingsPage: React.FC = () => {
         billPrefix: billPrefix.trim().toUpperCase(),
         taxEnabled,
         defaultTaxRate: defaultTaxRate.trim() ? Math.max(0, parseFloat(defaultTaxRate) || 0) : 0,
+        partyStatementEnabled,
         bankName: bankName.trim(),
         bankAccountNo: bankAccountNo.trim(),
         bankIfsc: bankIfsc.trim().toUpperCase(),
         bankBranch: bankBranch.trim(),
         bankAccountHolder: bankAccountHolder.trim(),
+        ...(canPickTemplate ? { invoiceTemplate, invoiceColor } : {}),
       });
       toast.success('Settings saved successfully');
     } catch (err) {
@@ -292,7 +311,7 @@ export const SettingsPage: React.FC = () => {
   };
 
   const SaveButton = (
-    <button type="submit" disabled={isSaving} className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-brand-800 hover:bg-brand-900 text-white text-sm font-semibold shadow-sm transition-colors disabled:opacity-60">
+    <button type="submit" disabled={isSaving} className="inline-flex items-center gap-2 h-10 px-5 rounded-lg bg-brand-600 hover:bg-brand-700 shadow-sm shadow-brand-600/20 text-white text-sm font-semibold shadow-sm transition-colors disabled:opacity-60">
       {isSaving ? <FaIcon icon="fa-solid fa-spinner" size={14} className="animate-spin" /> : <FaIcon icon="fa-solid fa-floppy-disk" size={14} />}
       Save Changes
     </button>
@@ -300,15 +319,13 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <Layout>
-      <form onSubmit={handleSubmit} className="space-y-4 animate-slide-up">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
-          <div>
-            <h1 className="text-xl font-bold text-slate-800">Business Settings</h1>
-            <p className="text-slate-500 mt-1 text-sm font-medium">Manage your business details and everything printed on invoices</p>
-          </div>
-          {!isLoading && SaveButton}
-        </div>
+      <form onSubmit={handleSubmit} className="space-y-5 animate-slide-up">
+        <PageHeader
+          crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Settings' }]}
+          title="Business Settings"
+          subtitle="Manage your business details and everything printed on invoices."
+          actions={!isLoading ? SaveButton : undefined}
+        />
 
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
@@ -323,7 +340,7 @@ export const SettingsPage: React.FC = () => {
                 {/* Left column */}
                 <div className="space-y-5">
                   <div className="flex items-start gap-5">
-                    <ImageUpload title="Logo" hint="Square PNG works best. Falls back to the Bill Counter mark." url={logoUrl} onChange={setLogoUrl} />
+                    <ImageUpload title="Logo" hint="Square PNG works best. Falls back to the myBillCounter mark." url={logoUrl} onChange={setLogoUrl} />
                     <div className="flex-1">
                       <label className={label}>
                         Business Name <span className="text-rose-500">*</span>
@@ -532,7 +549,7 @@ export const SettingsPage: React.FC = () => {
                         </div>
                         <span className="hidden sm:inline text-slate-400">=</span>
                         <input type="text" value={newDetailValue} onChange={(e) => setNewDetailValue(e.target.value)} placeholder="www.website.com" className={`${field} sm:flex-[1.4]`} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addDetail(); } }} />
-                        <button type="button" onClick={addDetail} className="px-5 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold">
+                        <button type="button" onClick={addDetail} className="px-5 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold">
                           Add
                         </button>
                       </div>
@@ -589,6 +606,85 @@ export const SettingsPage: React.FC = () => {
                 <p className="mt-1 text-xs text-slate-400">Prefilled into &quot;Add Terms &amp; Conditions&quot; on new invoices; editable per bill.</p>
               </div>
             </Section>
+
+            {/* ===== Features (only those included in the client's plan) ===== */}
+            {statementAllowed && (
+            <Section title="Features" subtitle="Turn on extra tools only if your business needs them">
+              <label className="flex items-center justify-between gap-4 cursor-pointer">
+                <span>
+                  <span className="block text-sm font-bold text-slate-700">Party Statement (Ledger)</span>
+                  <span className="block text-xs text-slate-400 mt-0.5">
+                    Adds a customer-wise statement with opening balance, invoices, payments and running balance. Download, print or share it on WhatsApp from the Customers page.
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={partyStatementEnabled}
+                  aria-label="Party Statement (Ledger)"
+                  onClick={() => setPartyStatementEnabled((v) => !v)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${partyStatementEnabled ? 'bg-brand-600' : 'bg-slate-300'}`}
+                >
+                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${partyStatementEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </button>
+              </label>
+            </Section>
+            )}
+
+            {/* ===== Invoice template (only when the admin lets this client choose) ===== */}
+            {canPickTemplate && (
+              <Section title="Invoice Template" subtitle="How your invoice and quotation PDFs look">
+                <div role="radiogroup" aria-label="Invoice template" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {TEMPLATES.filter((t) => allowedTemplates(account).includes(t.id)).map((t) => {
+                    const on = invoiceTemplate === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={on}
+                        onClick={() => setInvoiceTemplate(t.id)}
+                        className={`text-left rounded-xl border-2 overflow-hidden cursor-pointer transition-colors ${on ? 'border-brand-600' : 'border-slate-200 hover:border-slate-300'}`}
+                      >
+                        <div className="h-24">
+                          <TemplateThumb id={t.id} color={invoiceColor} />
+                        </div>
+                        <div className="px-3 py-2">
+                          <p className="text-sm font-semibold text-slate-800 flex items-center justify-between gap-2">
+                            {t.label}
+                            {on && <FaIcon icon="fa-solid fa-circle-check" size={13} className="text-brand-600" />}
+                          </p>
+                          <p className="text-[11px] text-slate-500">{t.paper}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-slate-500">{getTemplate(invoiceTemplate).description}</p>
+                {getTemplate(invoiceTemplate).usesColor && (
+                  <div>
+                    <label className={label}>Colour</label>
+                    <div role="radiogroup" aria-label="Invoice colour" className="flex flex-wrap gap-2">
+                      {TEMPLATE_COLORS.map((c) => (
+                        <button
+                          key={c.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={invoiceColor === c.value}
+                          aria-label={c.label}
+                          title={c.label}
+                          onClick={() => setInvoiceColor(c.value)}
+                          className={`h-8 w-8 rounded-full grid place-items-center text-white cursor-pointer ring-offset-2 ${invoiceColor === c.value ? 'ring-2 ring-slate-800' : ''}`}
+                          style={{ background: c.value }}
+                        >
+                          {invoiceColor === c.value && <FaIcon icon="fa-solid fa-check" size={11} />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </Section>
+            )}
 
             {/* ===== Bank ===== */}
             <Section title="Bank Account" subtitle="Optional. Toggle “Add Bank Account” on an invoice to print these details.">

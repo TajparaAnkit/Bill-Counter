@@ -16,15 +16,11 @@ export const UserMenu: React.FC = () => {
       .join('') || 'U';
 
   return (
-    <div className="flex items-center gap-2.5" title={email}>
-      <div className="hidden sm:block text-right leading-tight">
-        <p className="text-sm font-semibold text-slate-800 max-w-48 truncate">{displayName}</p>
-        {email && <p className="text-xs text-slate-500 max-w-56 truncate">{email}</p>}
-      </div>
+    <div className="flex items-center" title={[displayName, email].filter(Boolean).join(' · ')}>
       {user?.photoURL ? (
-        <img src={user.photoURL} alt="" className="h-9 w-9 rounded-full object-cover" referrerPolicy="no-referrer" />
+        <img src={user.photoURL} alt="" className="h-9 w-9 rounded-full object-cover ring-2 ring-white shadow-sm" referrerPolicy="no-referrer" />
       ) : (
-        <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-600 text-xs font-bold text-white">{initials}</span>
+        <span className="grid h-9 w-9 place-items-center rounded-full bg-linear-to-br from-brand-500 to-blue-600 text-xs font-bold text-white ring-2 ring-white shadow-sm">{initials}</span>
       )}
     </div>
   );

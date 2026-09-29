@@ -28,6 +28,17 @@ const DARK = {
 };
 
 export const CATALOG_THEMES: CatalogTheme[] = [
+  // Default — matches the app's violet→blue brand gradient.
+  {
+    id: 'violet',
+    label: 'Violet',
+    header: 'bg-linear-to-br from-brand-600 via-brand-500 to-blue-600',
+    glow: 'bg-blue-300/25',
+    priceText: 'text-brand-600',
+    focusRing: 'focus:ring-brand-500',
+    swatch: 'bg-linear-to-br from-brand-600 via-brand-500 to-blue-600',
+    ...DARK,
+  },
   {
     id: 'ocean',
     label: 'Ocean',

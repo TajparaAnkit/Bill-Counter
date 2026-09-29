@@ -1,38 +1,65 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Layout } from '../components/shared/Layout';
 import { FaIcon } from '../components/shared/FaIcon';
 import { CustomerFormModal } from '../components/Customers/CustomerFormModal';
 import { useConfirm } from '../components/ui/confirm';
 import { useAuth } from '../hooks/useAuth';
+import { useFeature } from '../hooks/useAccount';
 import { useToast } from '../hooks/useToast';
-import { getCustomers, addCustomer, updateCustomer, deleteCustomer, CustomerInput } from '../services/db';
-import { Customer } from '../types';
+import { getBills, getBusinessProfile, getCustomers, addCustomer, updateCustomer, deleteCustomer, CustomerInput } from '../services/db';
+import { Bill, Customer, UserProfile } from '../types';
+import { isLiveBill } from '../utils/docs';
+import { partyReminderUrl } from '../utils/reminder';
 import { Pagination } from '../components/ui/Pagination';
+import { buildLedger } from '../utils/ledger';
+import {
+  CountBadge,
+  IconAction,
+  Initials,
+  PageHeader,
+  SearchInput,
+  SegmentedTabs,
+  SortDir,
+  SortTh,
+  StatusPill,
+  TableCard,
+  TableEmpty,
+  nextSort,
+  tableCls,
+  tdCls,
+  thCls,
+  theadRowCls,
+  trCls,
+} from '../components/ui/Table';
 
-const avatarPalette = [
-  'from-brand-600 to-brand-600',
-  'from-sky-500 to-brand-500',
-  'from-violet-500 to-purple-500',
-  'from-amber-500 to-orange-500',
-  'from-rose-500 to-pink-500',
-];
+type TypeFilter = 'all' | 'customer' | 'supplier';
+type SortKey = 'name' | 'balance';
+
+const inr = (n: number) => '₹' + Math.abs(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export const CustomersPage: React.FC = () => {
   const { user } = useAuth();
+  const statementAllowed = useFeature('partyStatement');
   const toast = useToast();
   const confirm = useConfirm();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [bills, setBills] = useState<Bill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(searchParams.get('q') || '');
+  const [type, setType] = useState<TypeFilter>('all');
+  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: 'name', dir: 'asc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [statementEnabled, setStatementEnabled] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
 
-  // `?new=1` (sidebar "Create" menu) opens the add form directly, then drops the param.
+  // `?new=1` (top-bar "Create" menu) opens the add form directly, then drops the param.
   useEffect(() => {
     if (searchParams.get('new')) {
       setEditing(null);
@@ -43,7 +70,6 @@ export const CustomersPage: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
-
 
   const loadCustomers = async () => {
     if (!user) return;
@@ -58,7 +84,16 @@ export const CustomersPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (user) loadCustomers();
+    if (!user) return;
+    loadCustomers();
+    getBusinessProfile(user.uid).then((p) => {
+      setProfile(p);
+      setStatementEnabled(statementAllowed && !!p?.partyStatementEnabled);
+    });
+    // Balances are a nice-to-have: the list still works if bills fail to load.
+    getBills(user.uid)
+      .then((b) => setBills(b.filter(isLiveBill)))
+      .catch(() => setBills([]));
   }, [user]);
 
   const handleSubmit = async (data: CustomerInput) => {
@@ -95,195 +130,196 @@ export const CustomersPage: React.FC = () => {
     }
   };
 
+  // Party balance (opening + invoices − payments): + to collect, − to pay.
+  const balances = useMemo(() => {
+    const now = new Date();
+    return new Map(customers.map((c) => [c.id, buildLedger(c, bills, null, now).closingBalance]));
+  }, [customers, bills]);
+
+  const counts = useMemo(
+    () => ({
+      all: customers.length,
+      customer: customers.filter((c) => c.partyType !== 'supplier').length,
+      supplier: customers.filter((c) => c.partyType === 'supplier').length,
+    }),
+    [customers]
+  );
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return customers;
-    return customers.filter(
-      (c) =>
-        c.name?.toLowerCase().includes(term) ||
-        c.phone?.toLowerCase().includes(term) ||
-        c.email?.toLowerCase().includes(term) ||
-        c.gstin?.toLowerCase().includes(term)
+    const rows = customers.filter((c) => {
+      if (type === 'customer' && c.partyType === 'supplier') return false;
+      if (type === 'supplier' && c.partyType !== 'supplier') return false;
+      if (!term) return true;
+      return c.name?.toLowerCase().includes(term) || c.phone?.toLowerCase().includes(term) || c.email?.toLowerCase().includes(term) || c.gstin?.toLowerCase().includes(term);
+    });
+    const dir = sort.dir === 'asc' ? 1 : -1;
+    return [...rows].sort((a, b) =>
+      sort.key === 'balance' ? ((balances.get(a.id) || 0) - (balances.get(b.id) || 0)) * dir : (a.name || '').localeCompare(b.name || '') * dir
     );
-  }, [customers, search]);
+  }, [customers, search, type, sort, balances]);
 
-  // Reset to first page when search or dataset changes.
   useEffect(() => {
     setPage(1);
-  }, [search, customers.length]);
+  }, [search, type, sort, customers.length]);
 
   const pagedCustomers = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const totalToCollect = [...balances.values()].reduce((s, v) => s + Math.max(0, v), 0);
 
-  const initials = (name: string) =>
-    (name || '?')
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((p) => p[0]?.toUpperCase())
-      .join('') || '?';
-
-  const avatarColor = (name: string) => {
-    const code = (name || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-    return avatarPalette[code % avatarPalette.length];
+  const openNew = () => {
+    setEditing(null);
+    setIsFormOpen(true);
   };
 
   return (
     <Layout>
-      <div className="space-y-4 animate-slide-up">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-          <div>
-            <h1 className="text-xl font-bold text-slate-800">Customers</h1>
-            <p className="text-slate-500 text-xs">Customers and suppliers with GSTIN, addresses and credit terms</p>
-          </div>
-          <button
-            onClick={() => {
-              setEditing(null);
-              setIsFormOpen(true);
-            }}
-            className="btn-primary flex items-center space-x-2 py-2.5 px-4.5"
-          >
-            <FaIcon icon="fa-solid fa-plus" size={16} />
-            <span>Add Customer</span>
+      <PageHeader
+        crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Customers' }]}
+        title="Customers"
+        subtitle="Customers and suppliers with GSTIN, addresses, credit terms and balances."
+        actions={
+          <button onClick={openNew} className="btn-primary flex items-center gap-2 h-10 px-4 text-sm">
+            <FaIcon icon="fa-solid fa-plus" size={12} />
+            Add Customer
           </button>
+        }
+      />
+
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-20 space-y-4">
+          <FaIcon icon="fa-solid fa-spinner" className="animate-spin text-brand-600" size={36} />
+          <p className="text-slate-500 font-semibold">Loading customers...</p>
         </div>
-
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <FaIcon icon="fa-solid fa-spinner" className="animate-spin text-brand-600" size={40} />
-            <p className="text-slate-500 font-semibold">Loading customers...</p>
-          </div>
-        ) : (
-          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border-b border-slate-200">
-              <div className="flex items-center gap-2">
-                <h2 className="font-bold text-slate-800">All Customers</h2>
-                <span className="bg-slate-100 text-slate-500 text-xs font-bold px-2 py-0.5 rounded-full">
-                  {filtered.length}
-                </span>
-              </div>
-              <div className="relative w-full sm:w-72">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                  <FaIcon icon="fa-solid fa-magnifying-glass" size={14} />
-                </span>
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search name, phone, email or GSTIN..."
-                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 focus:bg-white transition-all duration-300"
-                />
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50/60 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="p-4">Name</th>
-                    <th className="p-4">Type</th>
-                    <th className="p-4">Phone</th>
-                    <th className="p-4">Email</th>
-                    <th className="p-4">GSTIN</th>
-                    <th className="p-4 text-center w-28">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filtered.length > 0 ? (
-                    pagedCustomers.map((c) => (
-                      <tr key={c.id} className="hover:bg-brand-50/30 transition-colors">
-                        <td className="p-4">
-                          <div className="flex items-center space-x-3">
-                            <span className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarColor(c.name)} text-white text-xs font-bold flex items-center justify-center shrink-0 shadow-sm`}>
-                              {initials(c.name)}
-                            </span>
-                            <span className="font-bold text-slate-700">{c.name}</span>
+      ) : (
+        <TableCard
+          title={
+            <>
+              All parties <CountBadge n={filtered.length} />
+              {totalToCollect > 0 && <span className="ml-2 text-xs font-medium text-slate-400">· {inr(totalToCollect)} to collect</span>}
+            </>
+          }
+          toolbar={
+            <>
+              <SearchInput value={search} onChange={setSearch} placeholder="Search customers…" className="sm:w-72" />
+              <SegmentedTabs<TypeFilter>
+                ariaLabel="Filter by party type"
+                value={type}
+                onChange={setType}
+                options={[
+                  { value: 'all', label: 'All', count: counts.all },
+                  { value: 'customer', label: 'Customers', count: counts.customer },
+                  { value: 'supplier', label: 'Suppliers', count: counts.supplier },
+                ]}
+              />
+            </>
+          }
+        >
+          <div className="overflow-x-auto">
+            <table className={tableCls}>
+              <thead>
+                <tr className={theadRowCls}>
+                  <SortTh label="Name" active={sort.key === 'name'} dir={sort.dir} onClick={() => setSort((c) => nextSort(c, 'name'))} />
+                  <th className={thCls}>Type</th>
+                  <th className={thCls}>Phone</th>
+                  <th className={thCls}>GSTIN</th>
+                  <SortTh label="Balance" align="right" active={sort.key === 'balance'} dir={sort.dir} onClick={() => setSort((c) => nextSort(c, 'balance', 'desc'))} />
+                  <th className={`${thCls} text-right`}>
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedCustomers.length > 0 ? (
+                  pagedCustomers.map((c) => {
+                    const bal = balances.get(c.id) || 0;
+                    const nameEl = <span className="font-semibold text-slate-900 truncate">{c.name}</span>;
+                    return (
+                      <tr key={c.id} className={trCls}>
+                        <td className={tdCls}>
+                          <div className="flex items-center gap-3 min-w-50">
+                            <Initials name={c.name} />
+                            <div className="min-w-0">
+                              {statementEnabled ? (
+                                <Link to={`/customers/${c.id}/statement`} className="block hover:text-brand-700 [&>span]:hover:text-brand-700">
+                                  {nameEl}
+                                </Link>
+                              ) : (
+                                <div>{nameEl}</div>
+                              )}
+                              <div className="text-xs text-slate-400 truncate">{c.email || c.category || '—'}</div>
+                            </div>
                           </div>
                         </td>
-                        <td className="p-4">
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${c.partyType === 'supplier' ? 'bg-violet-50 text-violet-700 border border-violet-200' : 'bg-brand-50 text-brand-700 border border-brand-200'}`}>
-                            {c.partyType === 'supplier' ? 'Supplier' : 'Customer'}
-                          </span>
+                        <td className={tdCls}>{c.partyType === 'supplier' ? <StatusPill tone="slate">Supplier</StatusPill> : <StatusPill tone="brandSoft">Customer</StatusPill>}</td>
+                        <td className={`${tdCls} text-slate-600 whitespace-nowrap`}>{c.phone || '—'}</td>
+                        <td className={`${tdCls} text-slate-500 font-mono text-xs whitespace-nowrap`}>{c.gstin || '—'}</td>
+                        <td className={`${tdCls} text-right whitespace-nowrap`}>
+                          {Math.abs(bal) < 0.005 ? (
+                            <span className="text-slate-400">—</span>
+                          ) : (
+                            <>
+                              <div className={`font-semibold tabular-nums ${bal > 0 ? 'text-slate-900' : 'text-rose-600'}`}>{inr(bal)}</div>
+                              <div className="text-xs text-slate-400">{bal > 0 ? 'To collect' : 'To pay'}</div>
+                            </>
+                          )}
                         </td>
-                        <td className="p-4 text-slate-600 text-sm font-medium">{c.phone || '—'}</td>
-                        <td className="p-4 text-slate-500 text-sm">{c.email || '—'}</td>
-                        <td className="p-4 text-slate-500 text-xs font-mono">{c.gstin || '—'}</td>
-                        <td className="p-4">
-                          <div className="flex justify-center gap-1.5">
-                            <button
+                        <td className={`${tdCls} text-right`}>
+                          <div className="flex items-center justify-end gap-0.5">
+                            {bal > 0.005 && (
+                              <IconAction
+                                icon="fa-regular fa-bell"
+                                title="Send payment reminder on WhatsApp"
+                                tone="whatsapp"
+                                onClick={() => window.open(partyReminderUrl(c.name, c.phone, bal, profile), '_blank', 'noopener')}
+                              />
+                            )}
+                            {statementEnabled && <IconAction icon="fa-regular fa-file-lines" title="Party Statement (Ledger)" onClick={() => navigate(`/customers/${c.id}/statement`)} />}
+                            <IconAction
+                              icon="fa-regular fa-pen-to-square"
+                              title="Edit"
                               onClick={() => {
                                 setEditing(c);
                                 setIsFormOpen(true);
                               }}
-                              className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
-                              title="Edit"
-                            >
-                              <FaIcon icon="fa-solid fa-pen" size={14} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(c)}
-                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Delete"
-                            >
-                              <FaIcon icon="fa-solid fa-trash" size={14} />
-                            </button>
+                            />
+                            <IconAction icon="fa-regular fa-trash-can" title="Delete" tone="danger" onClick={() => handleDelete(c)} />
                           </div>
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="px-6 py-20">
-                        <div className="flex flex-col items-center justify-center text-center space-y-4">
-                          <div className="w-16 h-16 rounded-lg bg-slate-50 flex items-center justify-center">
-                            <FaIcon
-                              icon={search ? 'fa-solid fa-magnifying-glass' : 'fa-solid fa-user-plus'}
-                              size={26}
-                              className="text-slate-300"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <p className="font-bold text-slate-600">
-                              {search ? 'No matching customers' : 'No customers yet'}
-                            </p>
-                            <p className="text-sm text-slate-400 max-w-xs">
-                              {search
-                                ? 'Try a different name, phone or email.'
-                                : 'Add customers to reuse them on invoices and share bills.'}
-                            </p>
-                          </div>
-                          {!search && (
-                            <button
-                              onClick={() => {
-                                setEditing(null);
-                                setIsFormOpen(true);
-                              }}
-                              className="btn-primary flex items-center space-x-2 mt-1"
-                            >
-                              <FaIcon icon="fa-solid fa-plus" size={14} />
-                              <span>Add Customer</span>
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <Pagination
-              page={page}
-              pageSize={pageSize}
-              total={filtered.length}
-              onPageChange={setPage}
-              onPageSizeChange={(s) => {
-                setPageSize(s);
-                setPage(1);
-              }}
-              itemLabel="customers"
-            />
+                    );
+                  })
+                ) : (
+                  <TableEmpty
+                    colSpan={6}
+                    icon={search || type !== 'all' ? 'fa-solid fa-magnifying-glass' : 'fa-solid fa-user-plus'}
+                    title={search || type !== 'all' ? 'No matching customers' : 'No customers yet'}
+                    text={search || type !== 'all' ? 'Try a different name, phone or email.' : 'Add customers to reuse them on invoices and share bills.'}
+                    action={
+                      !search && type === 'all' ? (
+                        <button onClick={openNew} className="btn-primary flex items-center gap-2 text-sm">
+                          <FaIcon icon="fa-solid fa-plus" size={12} />
+                          Add Customer
+                        </button>
+                      ) : undefined
+                    }
+                  />
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={filtered.length}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => {
+              setPageSize(s);
+              setPage(1);
+            }}
+            itemLabel="parties"
+          />
+        </TableCard>
+      )}
 
       <CustomerFormModal
         isOpen={isFormOpen}

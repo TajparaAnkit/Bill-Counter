@@ -1,9 +1,20 @@
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, Navigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 import { RegisterForm } from '../components/Auth/RegisterForm';
-import { GoogleButton } from '../components/Auth/GoogleButton';
 import { AuthArt } from '../components/Auth/AuthArt';
+import { BRAND_NAME } from '../config/brand';
 
 export const RegisterPage: React.FC = () => {
+  // Already logged in when arriving here (e.g. from the landing page): go to the dashboard.
+  // Decided once, so signing in / signing up on this page finishes its own flow first.
+  const { user, loading } = useAuth();
+  const [alreadyIn, setAlreadyIn] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!loading && alreadyIn === null) setAlreadyIn(!!user);
+  }, [loading, user, alreadyIn]);
+  if (alreadyIn) return <Navigate to="/dashboard" replace />;
+
   return (
     <div className="min-h-screen flex bg-white text-slate-800">
       {/* Left: form */}
@@ -16,7 +27,7 @@ export const RegisterPage: React.FC = () => {
             </div>
             <div>
               <span className="block text-lg font-bold text-slate-800 leading-none">
-                Bill Counter
+                {BRAND_NAME}
               </span>
               <span className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mt-1">
                 Invoicing Suite
@@ -28,14 +39,6 @@ export const RegisterPage: React.FC = () => {
           <p className="mt-2 text-sm text-slate-500">Set up your business workspace in a minute.</p>
 
           <div className="mt-6 space-y-5">
-            <GoogleButton label="Sign up with Google" />
-
-            <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-slate-200" />
-              <span className="text-xs font-medium text-slate-400">or sign up with email</span>
-              <div className="h-px flex-1 bg-slate-200" />
-            </div>
-
             <RegisterForm />
           </div>
 

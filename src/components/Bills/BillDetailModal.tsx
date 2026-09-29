@@ -6,12 +6,22 @@ import { generateInvoicePDF, generateInvoicePdfFile } from '../../utils/pdf';
 import { INVOICE_QR, INVOICE_QR_CAPTION } from '../../assets/qr';
 import { InvoicePaper } from './InvoicePaper';
 import { generateUpiQrDataUrl } from '../../utils/upiQr';
-import { updateBillPayment } from '../../services/db';
-import { PAYMENT_META, getPaymentStatus, getAmountDue } from '../../utils/payment';
-import { PaymentStatus } from '../../types';
+import { saveBillPayments } from '../../services/db';
+import { PAYMENT_META, getPaymentStatus, getAmountDue, getPayments, newPaymentId, paymentMethodLabel } from '../../utils/payment';
+import { BillPayment } from '../../types';
+import { todayISO } from '../../utils/tax';
+import { RecordPaymentModal } from './RecordPaymentModal';
+import { sharePdfOnWhatsApp } from '../../utils/share';
+import { invoiceReminderUrl } from '../../utils/reminder';
 import { BRAND_NAME } from '../../config/brand';
-import { usePrompt } from '../ui/confirm';
+import { useConfirm } from '../ui/confirm';
 import { useToast } from '../../hooks/useToast';
+import { useInvoiceTemplate } from '../../hooks/useInvoiceTemplate';
+
+const formatISODate = (iso: string) => {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+};
 
 interface BillDetailModalProps {
   isOpen: boolean;
@@ -19,6 +29,7 @@ interface BillDetailModalProps {
   bill: Bill | null;
   businessProfile: UserProfile | null;
   onUpdated?: (bill: Bill) => void;
+  onEdit?: (bill: Bill) => void; // shows an Edit button (not for cancelled invoices)
 }
 
 export const BillDetailModal: React.FC<BillDetailModalProps> = ({
@@ -27,13 +38,17 @@ export const BillDetailModal: React.FC<BillDetailModalProps> = ({
   bill,
   businessProfile,
   onUpdated,
+  onEdit,
 }) => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [isSavingPayment, setIsSavingPayment] = useState(false);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [showHistory, setShowHistory] = useState(true);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const toast = useToast();
-  const prompt = usePrompt();
+  const confirm = useConfirm();
+  const template = useInvoiceTemplate(businessProfile);
 
   const upiId = businessProfile?.upiId?.trim();
 
@@ -70,7 +85,7 @@ export const BillDetailModal: React.FC<BillDetailModalProps> = ({
     try {
       setIsDownloading(true);
       const filename = `Invoice_${bill.billNo}.pdf`;
-      await generateInvoicePDF(bill, businessProfile, filename);
+      await generateInvoicePDF(bill, businessProfile, filename, template);
       toast.success('PDF downloaded successfully');
     } catch (err) {
       console.error(err);
@@ -81,51 +96,15 @@ export const BillDetailModal: React.FC<BillDetailModalProps> = ({
   };
 
   const status = getPaymentStatus(bill);
-  const amountDue = getAmountDue(bill);
-
-  const openWhatsAppChat = () => {
-    // Normalize phone to WhatsApp format (digits + country code, no +).
-    let phone = (bill.customerPhone || '').replace(/\D/g, '');
-    if (phone.startsWith('0')) phone = phone.replace(/^0+/, '');
-    if (phone.length === 10) phone = `91${phone}`; // assume India if 10 digits
-
-    // No `text` param — we send the PDF only, not a text summary.
-    const url = phone ? `https://wa.me/${phone}` : `https://wa.me/`;
-    window.open(url, '_blank', 'noopener');
-  };
+  const cancelled = !!bill.cancelled;
+  const amountDue = cancelled ? 0 : getAmountDue(bill);
 
   const handleShareWhatsApp = async () => {
-    const filename = `Invoice_${bill.billNo}.pdf`;
-
     try {
       setIsSharing(true);
-      const file = await generateInvoicePdfFile(bill, businessProfile, filename);
-      const nav = navigator as any;
-
-      // Preferred path: native share sheet with the PDF ONLY (mobile / some
-      // desktops). No text is attached — just the invoice PDF.
-      if (file && nav.canShare && nav.canShare({ files: [file] })) {
-        try {
-          await nav.share({ files: [file] });
-          return;
-        } catch (err: any) {
-          if (err?.name === 'AbortError') return; // user dismissed the sheet
-          // otherwise fall through to the download fallback
-        }
-      }
-
-      // Fallback (most desktop browsers can't share files): download the PDF so
-      // it can be attached manually, and open the WhatsApp chat (no text).
-      if (file) {
-        const url = URL.createObjectURL(file);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-      openWhatsAppChat();
-      toast.info('Attaching PDFs isn’t supported in this browser — downloaded the PDF and opened WhatsApp so you can attach it.');
+      const file = await generateInvoicePdfFile(bill, businessProfile, `Invoice_${bill.billNo}.pdf`, template);
+      const res = await sharePdfOnWhatsApp(file, bill.customerPhone || bill.billTo?.phone);
+      if (res === 'downloaded') toast.info('Attaching PDFs isn’t supported in this browser — downloaded the PDF and opened WhatsApp so you can attach it.');
     } catch (err) {
       console.error(err);
       toast.error('Failed to prepare the invoice PDF');
@@ -134,63 +113,68 @@ export const BillDetailModal: React.FC<BillDetailModalProps> = ({
     }
   };
 
-  const handleSetPayment = async (next: PaymentStatus) => {
-    let amountPaid = 0;
-    if (next === 'paid') amountPaid = bill.total;
-    if (next === 'partial') {
-      const input = await prompt({
-        title: 'Record Partial Payment',
-        message: `How much has been received? (Total ₹${bill.total.toFixed(2)})`,
-        inputType: 'number',
-        prefix: '₹',
-        placeholder: '0.00',
-        defaultValue: bill.amountPaid ? String(bill.amountPaid) : '',
-        confirmText: 'Save Payment',
-        variant: 'primary',
-        min: 0,
-        max: bill.total,
-        step: 0.01,
-        validate: (v) => {
-          const n = parseFloat(v);
-          if (isNaN(n) || n <= 0) return 'Enter an amount greater than 0';
-          if (n > bill.total) return `Cannot exceed the total (₹${bill.total.toFixed(2)})`;
-          return null;
-        },
-      });
-      if (input === null) return; // cancelled
-      amountPaid = Math.min(bill.total, Math.max(0, parseFloat(input) || 0));
-    }
+  const payments = getPayments(bill);
+
+  const persistPayments = async (next: BillPayment[], message: string) => {
     try {
       setIsSavingPayment(true);
-      await updateBillPayment(bill.id, {
-        paymentStatus: next,
-        amountPaid,
-        paymentMethod: next === 'unpaid' ? undefined : bill.paymentMethod,
-      });
-      onUpdated?.({
-        ...bill,
-        paymentStatus: next,
-        amountPaid,
-        paidAt: next === 'paid' ? new Date() : undefined,
-      });
-      toast.success('Payment status updated');
+      const updated = await saveBillPayments(bill, next);
+      onUpdated?.(updated);
+      toast.success(message);
     } catch (err) {
       console.error(err);
       toast.error('Failed to update payment');
+      throw err;
     } finally {
       setIsSavingPayment(false);
     }
   };
 
+  const handleAddPayment = (payment: BillPayment) =>
+    persistPayments([...payments, payment], `Payment of ₹${payment.amount.toFixed(2)} recorded`);
+
+  // Quick action: receive the whole remaining balance today.
+  const handleMarkFullyPaid = async () => {
+    if (amountDue <= 0) return;
+    await persistPayments(
+      [...payments, { id: newPaymentId(), amount: amountDue, date: todayISO(), method: bill.paymentMethod || 'cash' }],
+      'Invoice marked as fully paid'
+    ).catch(() => undefined);
+  };
+
+  const handleDeletePayment = async (p: BillPayment) => {
+    const ok = await confirm({
+      title: 'Delete Payment',
+      message: `Remove the payment of ₹${p.amount.toFixed(2)} received on ${formatISODate(p.date)}? The invoice balance will go up by this amount.`,
+      confirmText: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    await persistPayments(payments.filter((x) => x.id !== p.id), 'Payment deleted').catch(() => undefined);
+  };
+
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="flex flex-col bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-[2px] p-4">
+      <div className="flex flex-col bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
         {/* Header Actions */}
-        <div className="shrink-0 flex justify-between items-center bg-gray-50 border-b border-slate-200 p-4">
-          <h2 className="text-lg font-bold text-gray-800">
-            Invoice: {bill.billNo}
+        <div className="shrink-0 flex justify-between items-center gap-3 bg-white border-b border-slate-200 px-4 sm:px-5 py-3 sm:py-4">
+          <h2 className="min-w-0 truncate text-base sm:text-lg font-bold text-slate-800">
+            <span className="hidden sm:inline">Invoice: </span>
+            <span className="sr-only sm:hidden">Invoice: </span>
+            {bill.billNo}
           </h2>
-          <div className="flex items-center space-x-2">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            {onEdit && !cancelled && (
+              <button
+                onClick={() => onEdit(bill)}
+                className="btn-secondary flex items-center space-x-2 text-sm py-1.5 px-3 cursor-pointer"
+                title="Edit this invoice"
+                aria-label="Edit"
+              >
+                <FaIcon icon="fa-regular fa-pen-to-square" size={15} />
+                <span className="hidden sm:inline">Edit</span>
+              </button>
+            )}
             <button
               onClick={handleShareWhatsApp}
               disabled={isSharing}
@@ -213,22 +197,24 @@ export const BillDetailModal: React.FC<BillDetailModalProps> = ({
               onClick={handleDownload}
               disabled={isDownloading}
               className="btn-primary flex items-center space-x-2 text-sm py-1.5 px-3 cursor-pointer"
+              aria-label="Download PDF"
+              title="Download PDF"
             >
               {isDownloading ? (
                 <>
                   <FaIcon icon="fa-solid fa-spinner" size={16} className="animate-spin" />
-                  <span>Generating PDF...</span>
+                  <span className="hidden sm:inline">Generating PDF...</span>
                 </>
               ) : (
                 <>
                   <FaIcon icon="fa-solid fa-file-arrow-down" size={16} />
-                  <span>Download PDF</span>
+                  <span className="hidden sm:inline">Download PDF</span>
                 </>
               )}
             </button>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1.5 rounded-full transition-colors"
+              className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-full transition-colors"
             >
               <FaIcon icon="fa-solid fa-xmark" size={20} />
             </button>
@@ -238,36 +224,101 @@ export const BillDetailModal: React.FC<BillDetailModalProps> = ({
         {/* Payment status bar */}
         <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border-b border-slate-200 px-4 py-3">
           <div className="flex items-center gap-3">
+            {cancelled ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-700">
+                <FaIcon icon="fa-solid fa-ban" size={11} />
+                Cancelled · not counted in sales or balances
+              </span>
+            ) : (
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${PAYMENT_META[status].badgeClass}`}>
               <FaIcon icon={PAYMENT_META[status].icon} size={11} />
               {PAYMENT_META[status].label}
             </span>
+            )}
             {amountDue > 0 && (
               <span className="text-xs font-semibold text-slate-500">
                 Due: <span className="text-rose-600 font-bold">₹{amountDue.toFixed(2)}</span>
               </span>
             )}
           </div>
+          {!cancelled && (
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-400 mr-1">Mark as:</span>
-            {(['paid', 'partial', 'unpaid'] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => handleSetPayment(s)}
-                disabled={isSavingPayment || status === s}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${PAYMENT_META[s].badgeClass} hover:brightness-95`}
+            {amountDue > 0 && (
+              <a
+                href={invoiceReminderUrl(bill, businessProfile)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50"
+                title="Send a payment reminder on WhatsApp"
               >
-                {PAYMENT_META[s].label}
+                <FaIcon icon="fa-brands fa-whatsapp" size={12} />
+                Remind
+              </a>
+            )}
+            {amountDue > 0 && (
+              <button
+                onClick={handleMarkFullyPaid}
+                disabled={isSavingPayment}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:brightness-95 disabled:opacity-50 cursor-pointer"
+                title={`Record ₹${amountDue.toFixed(2)} received today`}
+              >
+                Mark Fully Paid
               </button>
-            ))}
+            )}
+            <button
+              onClick={() => setIsPaymentOpen(true)}
+              disabled={isSavingPayment || amountDue <= 0}
+              className="btn-primary flex items-center gap-1.5 text-xs py-1.5 px-3 disabled:opacity-50"
+              title={amountDue <= 0 ? 'This invoice is fully paid' : 'Record a full or partial payment'}
+            >
+              <FaIcon icon="fa-solid fa-plus" size={11} />
+              Record Payment
+            </button>
           </div>
+          )}
         </div>
 
+        {/* Payment history */}
+        {payments.length > 0 && (
+          <div className="shrink-0 bg-white border-b border-slate-200 px-4 py-2.5">
+            <button
+              onClick={() => setShowHistory((v) => !v)}
+              className="w-full flex items-center justify-between text-xs font-bold text-slate-600 cursor-pointer"
+            >
+              <span>
+                Payment History ({payments.length}) · Received <span className="text-emerald-600">₹{(bill.amountPaid || 0).toFixed(2)}</span>
+              </span>
+              <FaIcon icon="fa-solid fa-chevron-down" size={11} className={`text-slate-400 transition-transform ${showHistory ? 'rotate-180' : ''}`} />
+            </button>
+            {showHistory && (
+              <div className="mt-2 max-h-40 overflow-y-auto divide-y divide-slate-100 rounded-md border border-slate-200">
+                {payments.map((p) => (
+                  <div key={p.id} className="flex items-center gap-3 px-3 py-2 text-xs">
+                    <span className="w-24 shrink-0 text-slate-600">{formatISODate(p.date)}</span>
+                    <span className="w-14 shrink-0 font-semibold text-slate-500">{paymentMethodLabel(p.method) || '—'}</span>
+                    <span className="flex-1 min-w-0 truncate text-slate-400">{p.note || ''}</span>
+                    <span className="font-bold text-emerald-600">₹{p.amount.toFixed(2)}</span>
+                    <button
+                      onClick={() => handleDeletePayment(p)}
+                      disabled={isSavingPayment || cancelled}
+                      className="p-1 text-slate-400 hover:text-rose-600 disabled:opacity-40 cursor-pointer"
+                      title="Delete payment"
+                    >
+                      <FaIcon icon="fa-solid fa-trash" size={11} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Invoice preview (scrolls within the modal) */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-6 md:p-10 bg-gray-100 flex justify-center">
-          <InvoicePaper bill={bill} profile={businessProfile} qrUrl={qrUrl} qrCaption={qrCaption} />
+        <div className="flex-1 min-h-0 overflow-y-auto p-6 md:p-10 bg-slate-100 flex justify-center">
+          <InvoicePaper bill={bill} profile={businessProfile} qrUrl={qrUrl} qrCaption={qrCaption} template={template} />
         </div>
       </div>
+      <RecordPaymentModal isOpen={isPaymentOpen} bill={bill} onClose={() => setIsPaymentOpen(false)} onSave={handleAddPayment} />
     </div>,
     document.body
   );

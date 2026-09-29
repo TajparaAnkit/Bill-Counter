@@ -5,12 +5,15 @@ import { Product } from '../../types';
 import { useToast } from '../../hooks/useToast';
 import { Select } from '../ui/Select';
 import { UNITS } from '../../utils/tax';
+import { tracksStock } from '../../utils/stock';
+import type { StockInput } from '../../services/db';
 
 interface ProductFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (name: string, price: number, file: File | null, hsn: string, unit: string) => Promise<void>;
+  onSubmit: (name: string, price: number, file: File | null, hsn: string, unit: string, stock?: StockInput) => Promise<void>;
   product?: Product | null;
+  showStock?: boolean; // Stock feature: track stock + low-stock alert fields
 }
 
 export const ProductFormModal: React.FC<ProductFormModalProps> = ({
@@ -18,6 +21,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   onClose,
   onSubmit,
   product,
+  showStock = false,
 }) => {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
@@ -26,6 +30,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [trackStock, setTrackStock] = useState(false);
+  const [stock, setStock] = useState('');
+  const [lowStock, setLowStock] = useState('');
   const toast = useToast();
 
   useEffect(() => {
@@ -36,7 +43,13 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setUnit(product.unit || 'PCS');
       setImagePreview(product.imageUrl || '');
       setImageFile(null);
+      setTrackStock(tracksStock(product));
+      setStock(tracksStock(product) ? String(product.stock) : '');
+      setLowStock(tracksStock(product) ? String(product.lowStock ?? 0) : '');
     } else {
+      setTrackStock(false);
+      setStock('');
+      setLowStock('');
       setName('');
       setPrice('');
       setHsn('');
@@ -72,9 +85,15 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       return;
     }
 
+    const stockInput: StockInput | undefined = showStock
+      ? trackStock
+        ? { stock: parseFloat(stock) || 0, lowStock: Math.max(0, parseFloat(lowStock) || 0) }
+        : { stock: null, lowStock: null }
+      : undefined;
+
     try {
       setIsSubmitting(true);
-      await onSubmit(name.trim(), numPrice, imageFile, hsn.trim(), unit);
+      await onSubmit(name.trim(), numPrice, imageFile, hsn.trim(), unit, stockInput);
       onClose();
     } catch (err) {
       console.error(err);
@@ -84,18 +103,18 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-      <div className="flex flex-col bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-        <div className="shrink-0 flex justify-between items-center bg-gray-50 border-b border-slate-200 p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 backdrop-blur-[2px] p-4">
+      <div className="flex flex-col bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+        <div className="shrink-0 flex justify-between items-center bg-slate-50 border-b border-slate-200 p-4">
           <div>
-            <h2 className="text-lg font-bold text-gray-800">
+            <h2 className="text-lg font-bold text-slate-800">
               {product ? 'Edit Product' : 'Add Product'}
             </h2>
             <p className="text-sm text-slate-500 mt-0.5">Save product details and image</p>
           </div>
           <button 
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1.5 rounded-full transition-colors"
+            className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-full transition-colors"
           >
             <FaIcon icon="fa-solid fa-xmark" size={20} />
           </button>
@@ -103,7 +122,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
               Product Name *
             </label>
             <input
@@ -118,7 +137,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
           <div className="grid grid-cols-[1fr_9rem] gap-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                 Price (₹) *
               </label>
               <input
@@ -132,14 +151,14 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Unit</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Unit</label>
               <Select aria-label="Unit" options={UNITS} value={unit} onChange={setUnit} className="py-2.5" />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              HSN / SAC Code <span className="font-normal text-gray-400">(optional)</span>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+              HSN / SAC Code <span className="font-normal text-slate-400">(optional)</span>
             </label>
             <input
               type="text"
@@ -149,17 +168,44 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               placeholder="e.g. 3814"
               className="input-field font-mono"
             />
-            <p className="mt-1 text-xs text-gray-400">Prefilled on invoice lines when this product is picked. Leave blank if not applicable.</p>
+            <p className="mt-1 text-xs text-slate-400">Prefilled on invoice lines when this product is picked. Leave blank if not applicable.</p>
           </div>
 
+          {showStock && (
+            <div className="rounded-lg border border-slate-200 p-3 space-y-3">
+              <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={trackStock}
+                  onChange={(e) => setTrackStock(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 accent-brand-600"
+                />
+                Track stock for this product
+              </label>
+              {trackStock && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="pf-stock" className="block text-xs font-semibold text-slate-600 mb-1">Current Stock</label>
+                    <input id="pf-stock" type="number" step="any" value={stock} onChange={(e) => setStock(e.target.value)} placeholder="0" className="input-field" />
+                  </div>
+                  <div>
+                    <label htmlFor="pf-low" className="block text-xs font-semibold text-slate-600 mb-1">Low Stock Alert At</label>
+                    <input id="pf-low" type="number" min="0" step="any" value={lowStock} onChange={(e) => setLowStock(e.target.value)} placeholder="0" className="input-field" />
+                  </div>
+                  <p className="col-span-2 text-xs text-slate-400">Invoices reduce stock automatically; cancelling or deleting an invoice puts it back.</p>
+                </div>
+              )}
+            </div>
+          )}
+
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
               Product Image
             </label>
             <div className="flex items-center space-x-4">
-              <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-4 cursor-pointer hover:border-brand-500 hover:bg-brand-50/50 transition-all w-32 h-32 text-center group">
-                <FaIcon icon="fa-solid fa-upload" size={24} className="text-gray-400 group-hover:text-brand-600 transition-colors mb-1" />
-                <span className="text-xs text-gray-500 font-medium group-hover:text-brand-600 transition-colors">
+              <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-lg p-4 cursor-pointer hover:border-brand-500 hover:bg-brand-50/50 transition-all w-32 h-32 text-center group">
+                <FaIcon icon="fa-solid fa-upload" size={24} className="text-slate-400 group-hover:text-brand-600 transition-colors mb-1" />
+                <span className="text-xs text-slate-500 font-medium group-hover:text-brand-600 transition-colors">
                   Upload file
                 </span>
                 <input
@@ -189,7 +235,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                   </button>
                 </div>
               ) : (
-                <div className="w-32 h-32 rounded-lg border border-dashed border-gray-200 bg-gray-50 flex items-center justify-center text-xs text-gray-400 font-medium">
+                <div className="w-32 h-32 rounded-lg border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-xs text-slate-400 font-medium">
                   No preview
                 </div>
               )}

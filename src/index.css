@@ -1,26 +1,44 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/source-sans-3";
+@import "@fontsource-variable/inter";
 
 @custom-variant dark (&:is(.dark *));
 
 /* =========================================================================
-   Theme tokens — flat, compact "billing software" look (myBillBook-inspired)
+   Theme tokens — soft "modern SaaS" look: light surfaces, violet-tinted
+   neutrals, violet brand, rounded cards (hue 285 throughout).
    ========================================================================= */
 @theme {
-  /* Brand: indigo-violet */
-  --color-brand-50: #f3f2ff;
-  --color-brand-100: #e9e7ff;
-  --color-brand-200: #d4d0fe;
-  --color-brand-300: #b4acfb;
-  --color-brand-400: #9082f5;
-  --color-brand-500: #6f5ceb;
-  --color-brand-600: #5b4ee6;
-  --color-brand-700: #4b3ecf;
-  --color-brand-800: #3e33ad;
-  --color-brand-900: #332b89;
-  --color-brand-950: #1f1a52;
+  /* Brand: violet */
+  --color-brand-50: #f3f4ff;
+  --color-brand-100: #e8e8ff;
+  --color-brand-200: #d4d4ff;
+  --color-brand-300: #b8b4ff;
+  --color-brand-400: #9588ff;
+  --color-brand-500: #7a5aff;
+  --color-brand-600: #6d45f9;
+  --color-brand-700: #5b32d6;
+  --color-brand-800: #472aaa;
+  --color-brand-900: #382483;
+  --color-brand-950: #221556;
+
+  /* Neutrals: Tailwind's slate re-tinted toward the brand hue, so every
+     existing slate-* utility picks up the new look without per-file edits. */
+  --color-slate-50: #fafafd;
+  --color-slate-100: #f3f3f9;
+  --color-slate-200: #e7e7ee;
+  --color-slate-300: #d3d3dd;
+  --color-slate-400: #a0a0ae;
+  --color-slate-500: #70707e;
+  --color-slate-600: #545461;
+  --color-slate-700: #3e3e4b;
+  --color-slate-800: #252531;
+  --color-slate-900: #15151f;
+  --color-slate-950: #07060f;
+
+  /* Page surface behind cards */
+  --color-canvas: #f9fafd;
 
   /* Accent: orange (sparingly, for the main call-to-action) */
   --color-accent-50: #fff4ec;
@@ -29,7 +47,7 @@
   --color-accent-600: #d2560b;
   --color-accent-700: #b3480a;
 
-  --font-sans: 'Source Sans 3 Variable', 'Source Sans Pro', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-display: var(--font-sans);
   --font-heading: var(--font-sans);
 }
@@ -58,33 +76,8 @@
   .kb-article pre code {
     @apply bg-transparent text-inherit p-0;
   }
-  .kb-article .tip {
-    @apply bg-brand-50 text-brand-800 rounded-md px-3 py-2 text-[0.8125rem] mt-3 mb-0;
-  }
   .kb-article a {
     @apply text-brand-600 underline;
-  }
-
-  .trading-card {
-    @apply bg-white border border-slate-200 rounded-lg transition-colors duration-200;
-    min-height: 64px;
-  }
-  .trading-card:hover {
-    @apply border-brand-300;
-  }
-
-  .metric-card {
-    @apply bg-white border border-slate-200 rounded-lg p-4;
-    min-height: 96px;
-  }
-  .metric-card .label {
-    @apply text-sm text-slate-600;
-  }
-  .metric-card .value {
-    @apply text-2xl font-bold text-slate-900 mt-2;
-  }
-  .metric-icon {
-    @apply rounded-md p-2 bg-brand-50 text-brand-700 border border-brand-100;
   }
 
   .action-btn {
@@ -114,18 +107,6 @@
   .action-dashboard:hover {
     background: #1e293b;
   }
-
-  .recent-card {
-    @apply bg-white border border-slate-200 rounded-lg p-5;
-    min-height: 320px;
-  }
-  .recent-card-header {
-    @apply flex items-center justify-between mb-4;
-  }
-  .recent-empty {
-    @apply flex flex-col items-center justify-center text-center gap-4 text-slate-400;
-    min-height: 220px;
-  }
 }
 
 /*
@@ -138,33 +119,34 @@
   html {
     scroll-behavior: smooth;
     font-family: var(--font-sans);
-    font-size: 15px;
+    font-size: 14.5px;
+    font-feature-settings: 'cv11', 'ss01';
   }
   body {
-    background-color: #f5f6fa;
-    color: #1e293b;
+    background-color: var(--color-canvas);
+    color: var(--color-slate-900);
     -webkit-font-smoothing: antialiased;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply px-4 py-2 bg-brand-600 text-white font-semibold rounded-md hover:bg-brand-700 active:bg-brand-800 transition-colors duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed;
+    @apply px-4 py-2 bg-brand-600 text-white font-semibold rounded-lg shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:bg-brand-800 transition-colors duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed;
   }
   .btn-secondary {
-    @apply px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold rounded-md transition-colors duration-200 cursor-pointer disabled:opacity-60;
+    @apply px-4 py-2 bg-white border border-slate-200 shadow-xs hover:bg-slate-50 text-slate-700 font-semibold rounded-lg transition-colors duration-200 cursor-pointer disabled:opacity-60;
   }
   .btn-accent {
     @apply px-4 py-2 bg-accent-500 text-white font-semibold rounded-md hover:bg-accent-600 transition-colors duration-200 cursor-pointer;
   }
   .card {
-    @apply bg-white rounded-lg border border-slate-200 p-5;
+    @apply bg-white rounded-xl border border-slate-200 shadow-xs p-5;
   }
   .card-glass {
-    @apply bg-white rounded-lg border border-slate-200 p-5;
+    @apply bg-white rounded-xl border border-slate-200 shadow-xs p-5;
   }
   .input-field {
-    @apply w-full px-3 py-2.5 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 text-slate-800 placeholder-slate-400 transition-colors duration-200;
+    @apply w-full px-3 py-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 text-slate-800 placeholder-slate-400 transition-colors duration-200;
   }
 }
 
@@ -192,11 +174,11 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #d3d3dd;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #a0a0ae;
 }
 
 /* shadcn/ui token bridge */
@@ -247,7 +229,7 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: #5b4ee6;
+  --primary: #6d45f9;
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -257,13 +239,13 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: #5b4ee6;
+  --ring: #6d45f9;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.5rem;
+  --radius: 0.75rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -319,6 +301,6 @@
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-sans);
-    letter-spacing: -0.005em;
+    letter-spacing: -0.015em;
   }
 }
